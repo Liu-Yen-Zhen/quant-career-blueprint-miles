@@ -1,6 +1,5 @@
 <div class="min-h-screen bg-slate-900 text-slate-200 flex flex-col md:flex-row font-sans">
   
-  <!-- Sidebar Navigation -->
   <aside class="w-full md:w-64 bg-slate-950 border-r border-slate-800 flex-shrink-0 flex flex-col h-screen overflow-hidden sticky top-0">
     <div class="p-6 border-b border-slate-800 bg-slate-950 z-10">
       <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400">
@@ -46,10 +45,8 @@
     </div>
   </aside>
 
-  <!-- Main Content Area -->
   <main class="flex-1 flex flex-col h-screen overflow-hidden">
     
-    <!-- Top Bar -->
     <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-8 flex-shrink-0">
       <div class="flex space-x-6">
         <button 
@@ -91,13 +88,11 @@
       </div>
     </header>
 
-    <!-- Content Scrollable Area -->
     <div class="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-900">
       
       @if (activeTab() === 'roadmap') {
         <div class="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20">
           
-          <!-- Header Area with Summary -->
           <div class="flex flex-col mb-4">
              <div>
                 <span class="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded bg-slate-800 text-cyan-400 mb-2 inline-block border border-slate-700">
@@ -113,13 +108,10 @@
              </div>
           </div>
 
-          <!-- Main Grid -->
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <!-- Left Column: Tasks (Span 2) -->
             <div class="lg:col-span-2 space-y-6">
                 
-                <!-- Day Selector Tabs -->
                 <div class="flex space-x-1 border-b border-slate-800 overflow-x-auto pb-1 no-scrollbar">
                   @for (day of currentWeekSchedule(); track day.day_id; let i = $index) {
                     <button 
@@ -137,7 +129,6 @@
                 </div>
 
                 @if (currentDaySchedule(); as day) {
-                  <!-- Yushi Focus Alert -->
                   <div class="bg-slate-800/50 border-l-4 border-yellow-500 p-4 rounded-r-lg">
                     <div class="flex items-start">
                        <i class="fas fa-lightbulb text-yellow-500 mt-1 mr-3"></i>
@@ -148,10 +139,8 @@
                     </div>
                   </div>
 
-                  <!-- Task Groups Stack -->
                   <div class="space-y-4">
                     
-                    <!-- AM Block -->
                     <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-700 transition-colors">
                       <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
                         <div class="flex items-center">
@@ -179,7 +168,6 @@
                       </div>
                     </div>
 
-                    <!-- PM Block -->
                     <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-700 transition-colors">
                       <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
                         <div class="flex items-center">
@@ -207,7 +195,6 @@
                       </div>
                     </div>
 
-                    <!-- Night Block -->
                     <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-700 transition-colors">
                       <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
                         <div class="flex items-center">
@@ -236,17 +223,48 @@
                     </div>
                   </div>
 
-                  <!-- Learning Journal Section -->
                   <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden mt-6 flex flex-col max-h-[600px]">
                       <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
                           <span class="text-sm font-bold text-slate-200">
                             <i class="fas fa-book-journal-whills text-emerald-500 mr-2"></i>Learning Journal
                           </span>
-                          <span class="text-xs text-slate-500">{{ currentDayLogs().length }} entries</span>
+                          
+                          <div class="flex items-center space-x-3">
+                              <button 
+                                (click)="generateDailySummary()"
+                                class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium border border-cyan-500/30 px-2 py-1 rounded hover:bg-cyan-500/10"
+                                title="Generate Daily Recap with AI"
+                              >
+                                <i class="fas fa-magic mr-1"></i> ✨ 生成總結
+                              </button>
+                              <span class="text-xs text-slate-500">{{ currentDayLogs().length }} entries</span>
+                          </div>
                       </div>
 
-                      <!-- Input Area -->
                       <div class="p-4 bg-slate-950 border-b border-slate-800">
+                           <div class="flex space-x-2 mb-3">
+                              <button (click)="setLogType('theory')" 
+                                  [class.bg-yellow-500]="currentLogType() === 'theory'" [class.text-black]="currentLogType() === 'theory'" [class.opacity-50]="currentLogType() !== 'theory'"
+                                  class="px-3 py-1 rounded text-xs font-bold border border-yellow-500/30 text-yellow-500 transition-all hover:opacity-100">
+                                  <i class="fas fa-book-open mr-1"></i> 理論推導
+                              </button>
+                              <button (click)="setLogType('code')" 
+                                  [class.bg-blue-500]="currentLogType() === 'code'" [class.text-black]="currentLogType() === 'code'" [class.opacity-50]="currentLogType() !== 'code'"
+                                  class="px-3 py-1 rounded text-xs font-bold border border-blue-500/30 text-blue-500 transition-all hover:opacity-100">
+                                  <i class="fas fa-code mr-1"></i> 實作筆記
+                              </button>
+                              <button (click)="setLogType('bug')" 
+                                  [class.bg-rose-500]="currentLogType() === 'bug'" [class.text-black]="currentLogType() === 'bug'" [class.opacity-50]="currentLogType() !== 'bug'"
+                                  class="px-3 py-1 rounded text-xs font-bold border border-rose-500/30 text-rose-500 transition-all hover:opacity-100">
+                                  <i class="fas fa-bug mr-1"></i> Debug
+                              </button>
+                              <button (click)="setLogType('idea')" 
+                                  [class.bg-emerald-500]="currentLogType() === 'idea'" [class.text-black]="currentLogType() === 'idea'" [class.opacity-50]="currentLogType() !== 'idea'"
+                                  class="px-3 py-1 rounded text-xs font-bold border border-emerald-500/30 text-emerald-500 transition-all hover:opacity-100">
+                                  <i class="fas fa-lightbulb mr-1"></i> 靈感/總結
+                              </button>
+                          </div>
+
                           <textarea 
                             [ngModel]="currentLogInput()"
                             (ngModelChange)="currentLogInput.set($event)"
@@ -265,7 +283,6 @@
                           </div>
                       </div>
 
-                      <!-- Log List -->
                       <div class="overflow-y-auto flex-1 p-4 space-y-4 custom-scrollbar">
                           @if (currentDayLogs().length === 0) {
                               <div class="text-center py-8 text-slate-600 italic text-sm">
@@ -273,14 +290,23 @@
                               </div>
                           }
                           @for (log of currentDayLogs(); track log.id) {
-                              <div class="group relative pl-4 border-l-2 border-slate-800 hover:border-emerald-500/50 transition-colors">
-                                  <!-- Timestamp Dot -->
-                                  <div class="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-slate-800 group-hover:bg-emerald-500 transition-colors"></div>
+                              <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
+                                  [class.border-yellow-500]="log.type === 'theory'"
+                                  [class.border-blue-500]="log.type === 'code'"
+                                  [class.border-rose-500]="log.type === 'bug'"
+                                  [class.border-emerald-500]="log.type === 'idea' || !log.type">
                                   
-                                  <div class="flex justify-between items-start mb-1">
-                                      <span class="text-[10px] font-mono text-slate-500">
-                                        {{ log.timestamp | date:'shortTime' }} · {{ log.timestamp | date:'mediumDate' }}
-                                      </span>
+                                  <div class="flex justify-between items-start mb-2">
+                                      <div class="flex items-center space-x-2">
+                                          @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span> }
+                                          @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
+                                          @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
+                                          @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
+                                          
+                                          <span class="text-[10px] font-mono text-slate-500">
+                                            {{ log.timestamp | date:'HH:mm' }}
+                                          </span>
+                                      </div>
                                       <button (click)="deleteLog(log.id)" class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity px-2">
                                           <i class="fas fa-trash-alt text-xs"></i>
                                       </button>
@@ -297,12 +323,9 @@
 
             </div>
 
-            <!-- Right Column: Stats (Span 1) -->
             <div class="space-y-6">
-                <!-- Skill Matrix (Fixed Height) -->
-               <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative min-h-[350px]">
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative min-h-[350px]">
                   <div class="w-full flex justify-between items-start mb-4">
-                     <!-- Updated Title -->
                      <h3 class="text-lg font-bold text-slate-200 tracking-wide">能力成長模型</h3>
                      <span class="text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">TOTAL PROFICIENCY</span>
                   </div>
@@ -311,7 +334,6 @@
                      <div #radarChart class="w-full h-full flex items-center justify-center"></div>
                   </div>
                   
-                  <!-- Stats Footer -->
                   <div class="grid grid-cols-2 gap-4 w-full mt-4 pt-4 border-t border-slate-800">
                      <div class="text-center">
                        <div class="text-[10px] text-slate-500 uppercase">Math Proficiency</div>
@@ -324,7 +346,6 @@
                   </div>
                </div>
 
-               <!-- Protocol Card -->
                <div class="bg-slate-950 border border-slate-800 rounded-xl p-6">
                   <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">Daily Protocol</h3>
                   <ul class="space-y-4 text-xs font-mono text-slate-400">
@@ -357,8 +378,7 @@
 
           </div>
 
-          <!-- Bottom: AI Tutor Section -->
-           <div class="bg-slate-950 rounded-xl border border-cyan-900/50 p-6 relative overflow-hidden mt-8">
+          <div class="bg-slate-950 rounded-xl border border-cyan-900/50 p-6 relative overflow-hidden mt-8">
             <div class="absolute top-0 right-0 w-64 h-64 bg-cyan-900/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
             
             <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
@@ -412,7 +432,6 @@
           </div>
 
           <div class="bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden min-h-[400px] flex flex-col relative">
-            <!-- Card Decor -->
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-cyan-500 to-emerald-500"></div>
 
             <div class="p-8 flex-1 flex flex-col items-center justify-center text-center">
@@ -535,7 +554,7 @@
              <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
                <div class="text-purple-400 text-lg mb-3"><i class="fas fa-chess-board"></i> 策略層</div>
                <p class="text-sm text-slate-400 leading-relaxed">
-                 基於 <strong>Avellaneda-Stoikov</strong> 模型。引入強化學習 (Q-Learning) 動態調整風險厭惡參數 $\gamma$。當 VPIN (毒性指標) 升高時，擴大 Spread 以減少逆向選擇。
+                 基於 <strong>Avellaneda-Stoikov</strong> 模型。引入強化學習 (Q-Learning) 動態調整風險厭惡參數 $\\gamma$。當 VPIN (毒性指標) 升高時，擴大 Spread 以減少逆向選擇。
                </p>
              </div>
              <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
