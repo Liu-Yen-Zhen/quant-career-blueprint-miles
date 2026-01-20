@@ -29,6 +29,7 @@ interface LogEntry {
   dayId: string;
   timestamp: number;
   content: string;
+  type: 'theory' | 'code' | 'bug' | 'idea'; // 新增 type
 }
 
 @Component({
@@ -52,6 +53,7 @@ export class AppComponent {
   completedTasks = signal<Set<string>>(new Set<string>());
   learningLogs = signal<LogEntry[]>([]);
   currentLogInput = signal<string>('');
+  currentLogType = signal<'theory' | 'code' | 'bug' | 'idea'>('idea'); // 新增當前筆記類型
 
   // AI & Interview State
   tutorLoading = signal<boolean>(false);
@@ -251,13 +253,48 @@ export class AppComponent {
   }
   isTaskCompleted(task: string) { return this.completedTasks().has(task); }
 
+  // 新增：切換筆記類型
+  setLogType(type: 'theory' | 'code' | 'bug' | 'idea') {
+    this.currentLogType.set(type);
+  }
+
+  // 修改：儲存時加入 type
   addLog() {
     const content = this.currentLogInput().trim();
     if (!content) return;
-    this.learningLogs.update(logs => [{ id: crypto.randomUUID(), dayId: this.currentDaySchedule()?.day_id, timestamp: Date.now(), content }, ...logs]);
+    this.learningLogs.update(logs => [{ 
+      id: crypto.randomUUID(), 
+      dayId: this.currentDaySchedule()?.day_id, 
+      timestamp: Date.now(), 
+      content,
+      type: this.currentLogType() // 儲存當前類型
+    }, ...logs]);
     this.currentLogInput.set('');
   }
   deleteLog(id: string) { this.learningLogs.update(logs => logs.filter(l => l.id !== id)); }
+
+  // 新增：生成每日總結
+  async generateDailySummary() {
+    const logs = this.currentDayLogs().map(l => ({ type: l.type || 'idea', content: l.content }));
+    const title = this.currentDaySchedule()?.title || 'Quant Study';
+    
+    this.tutorLoading.set(true);
+    this.tutorConcept.set('每日學習總結');
+    this.tutorResponse.set(''); // 清空舊內容
+    
+    const summary = await this.geminiService.summarizeDailyLogs(logs, title);
+    this.tutorResponse.set(summary);
+    this.tutorLoading.set(false);
+    
+    // 自動將總結也存成一條特殊的筆記
+    this.learningLogs.update(prev => [{
+      id: crypto.randomUUID(),
+      dayId: this.currentDaySchedule()?.day_id,
+      timestamp: Date.now(),
+      content: `## 🤖 AI Daily Recap\n${summary}`,
+      type: 'idea'
+    }, ...prev]);
+  }
 
   // --- D3 ---
   drawRadarChart(skills: { [key: string]: number }) {
