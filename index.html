@@ -1,26 +1,80 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-  <head>
+    <head>
     <meta charset="UTF-8" />
     <title>Quant Career Blueprint</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Tailwind + Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- KaTeX -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+    <!-- KaTeX auto-render：讓 $E=mc^2$、$$...$$ 會自動變公式 -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Prism 語法上色 -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+
+    <!-- 讓整個畫面只要有變動，就自動套用 KaTeX + Prism -->
+    <script>
+      function applyMathAndHighlight() {
+        if (window.renderMathInElement) {
+          window.renderMathInElement(document.body, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+            ],
+            throwOnError: false,
+          });
+        }
+        if (window.Prism) {
+          window.Prism.highlightAll();
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // 一開始先跑一次
+        applyMathAndHighlight();
+
+        // 監聽畫面變化（Angular 重新 render、你改筆記都會觸發）
+        const observer = new MutationObserver(() => {
+          applyMathAndHighlight();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+    </script>
+
     <style>
-      /* Custom scrollbar for financial terminal look */
+      /* 捲軸樣式 */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #111827; 
+        background: #111827;
       }
       ::-webkit-scrollbar-thumb {
-        background: #374151; 
+        background: #374151;
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #4B5563; 
+        background: #4b5563;
       }
       body {
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -28,28 +82,31 @@
         color: #e2e8f0; /* Slate 200 */
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "rxjs": "https://esm.sh/rxjs@^7.8.2?conditions=es2015",
-    "rxjs/operators": "https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015",
-    "rxjs/ajax": "https://esm.sh/rxjs@^7.8.2/ajax?conditions=es2015",
-    "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.2/webSocket?conditions=es2015",
-    "rxjs/testing": "https://esm.sh/rxjs@^7.8.2/testing?conditions=es2015",
-    "rxjs/fetch": "https://esm.sh/rxjs@^7.8.2/fetch?conditions=es2015",
-    "@angular/common": "https://esm.sh/@angular/common@^21.0.8?external=rxjs",
-    "@angular/platform-browser": "https://esm.sh/@angular/platform-browser@^21.0.8?external=rxjs",
-    "@angular/core": "https://esm.sh/@angular/core@^21.0.8?external=rxjs",
-    "@angular/compiler": "https://esm.sh/@angular/compiler@^21.0.8?external=rxjs",
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0?external=rxjs",
-    "ngx-markdown": "https://esm.sh/ngx-markdown@^21.0.1?external=rxjs",
-    "d3": "https://esm.sh/d3@^7.9.0",
-    "@angular/forms": "https://esm.sh/@angular/forms@^21.0.8?external=rxjs"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
+
+    <!-- importmap：維持原本 Angular + ngx-markdown 的設定 -->
+    <script type="importmap">
+      {
+        "imports": {
+          "rxjs": "https://esm.sh/rxjs@^7.8.2?conditions=es2015",
+          "rxjs/operators": "https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015",
+          "rxjs/ajax": "https://esm.sh/rxjs@^7.8.2/ajax?conditions=es2015",
+          "rxjs/webSocket": "https://esm.sh/rxjs@^7.8.2/webSocket?conditions=es2015",
+          "rxjs/testing": "https://esm.sh/rxjs@^7.8.2/testing?conditions=es2015",
+          "rxjs/fetch": "https://esm.sh/rxjs@^7.8.2/fetch?conditions=es2015",
+          "@angular/common": "https://esm.sh/@angular/common@^21.0.8?external=rxjs",
+          "@angular/platform-browser": "https://esm.sh/@angular/platform-browser@^21.0.8?external=rxjs",
+          "@angular/core": "https://esm.sh/@angular/core@^21.0.8?external=rxjs",
+          "@angular/forms": "https://esm.sh/@angular/forms@^21.0.8?external=rxjs",
+          "@angular/router": "https://esm.sh/@angular/router@^21.0.8?external=rxjs",
+          "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
+          "ngx-markdown": "https://esm.sh/ngx-markdown@^16.0.0?external=@angular/core,@angular/common,@angular/platform-browser,rxjs",
+          "d3": "https://esm.sh/d3@^7.9.0",
+          "marked": "https://esm.sh/marked@^9.0.0"
+        }
+      }
+    </script>
+  </head>
+
   <body>
     <app-root></app-root>
   </body>
