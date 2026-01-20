@@ -269,7 +269,7 @@
                             [ngModel]="currentLogInput()"
                             (ngModelChange)="currentLogInput.set($event)"
                             class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-24 placeholder-slate-600"
-                            placeholder="Record your insights, formulas, or debug notes for today..."
+                            placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
                             (keydown.control.enter)="addLog()"
                           ></textarea>
                           <div class="flex justify-end mt-2">
@@ -304,7 +304,7 @@
                                           @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
                                           
                                           <span class="text-[10px] font-mono text-slate-500">
-                                            {{ log.timestamp | date:'HH:mm' }}
+                                            {{ log.timestamp | date:'yyyy-MM-dd HH:mm' }}
                                           </span>
                                       </div>
                                       <button (click)="deleteLog(log.id)" class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity px-2">
@@ -313,7 +313,7 @@
                                   </div>
                                   
                                   <div class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                                      <markdown [data]="log.content"></markdown>
+                                      <markdown [data]="log.content" katex clipboard></markdown>
                                   </div>
                               </div>
                           }
@@ -377,51 +377,8 @@
             </div>
 
           </div>
-
-          <div class="bg-slate-950 rounded-xl border border-cyan-900/50 p-6 relative overflow-hidden mt-8">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-cyan-900/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            
-            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
-              <i class="fas fa-robot text-cyan-400 mr-2"></i> AI 量化導師 (Quant Tutor)
-            </h3>
-            
-            @if (tutorResponse()) {
-              <div class="bg-slate-900 rounded-lg p-4 border border-slate-800 mb-4 animate-fade-in">
-                <div class="text-xs text-cyan-500 font-bold mb-2 uppercase">解釋：{{ tutorConcept() }}</div>
-                <markdown class="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed" [data]="tutorResponse()"></markdown>
-              </div>
-              <button 
-                (click)="tutorResponse.set('')" 
-                class="text-xs text-slate-500 hover:text-white underline mb-4 block text-right"
-              >
-                清除對話
-              </button>
-            }
-
-            @if (tutorLoading()) {
-              <div class="flex items-center justify-center py-8">
-                <div class="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            }
-
-            @if (!tutorLoading() && !tutorResponse()) {
-              <p class="text-sm text-slate-400 mb-4">
-                點擊下方關鍵字，讓 AI 為你深入解析這些高頻交易概念。
-              </p>
-              <div class="flex flex-wrap gap-2">
-                @for (concept of currentWeekData()?.keyConcepts; track concept) {
-                  <button 
-                    (click)="askAiTutor(concept)"
-                    class="px-3 py-1.5 rounded-md bg-slate-900 border border-slate-700 text-xs text-cyan-400 hover:bg-cyan-950 hover:border-cyan-500 transition-all cursor-pointer flex items-center"
-                  >
-                    {{ concept }} <i class="fas fa-arrow-right text-[10px] ml-1 opacity-50"></i>
-                  </button>
-                }
-              </div>
-            }
+          
           </div>
-
-        </div>
       }
 
       @if (activeTab() === 'interview') {
