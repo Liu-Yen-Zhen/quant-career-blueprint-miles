@@ -101,4 +101,37 @@ export class GeminiService {
       };
     }
   }
+
+  async summarizeDailyLogs(logs: {type: string, content: string}[], dayTitle: string): Promise<string> {
+    if (!this.ai) return '請先設定 API Key 以使用總結功能。';
+
+    const model = 'gemini-2.5-flash';
+    // 將筆記轉換成文字串
+    const logsText = logs.map(l => `[${l.type.toUpperCase()}] ${l.content}`).join('\n');
+
+    const prompt = `
+      你是一位量化交易學習助手。使用者今天學習了 "${dayTitle}"，以下是他的零散筆記：
+      
+      ${logsText}
+      
+      請幫我將這些筆記整理成一份結構化的「每日複習摘要 (Daily Recap)」，使用 Markdown 格式：
+      1. **核心概念 (Key Concepts)**：今天學到的數學或金融理論重點。
+      2. **技術實作 (Implementation)**：寫了什麼程式碼，用了什麼庫 (Numpy/Pandas)。
+      3. **問題與解決 (Debug Log)**：遇到的錯誤及解決方法（這點很重要，若有 Bug 類型的筆記請特別強調）。
+      4. **Action Item**：明天需要繼續深入或改進的地方。
+      
+      請用繁體中文，保持簡潔專業，適合日後快速回顧。
+    `;
+
+    try {
+      const response = await this.ai.models.generateContent({
+        model: model,
+        contents: prompt,
+      });
+      return response.text || '無法生成摘要。';
+    } catch (error) {
+      console.error('Gemini API Error:', error);
+      return '生成失敗，請檢查 API Key 與網路連線。';
+    }
+  }
 }
