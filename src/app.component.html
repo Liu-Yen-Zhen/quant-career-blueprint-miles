@@ -147,7 +147,16 @@
                           <span class="text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded mr-3 w-8 text-center">AM</span>
                           <span class="text-sm font-bold text-slate-200">THEORY & RESEARCH</span>
                         </div>
-                        <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.am.topic }}</span>
+                        <div class="flex items-center space-x-3">
+                          <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.am.topic }}</span>
+                          <button
+                            (click)="openJournalFor('theory')"
+                            class="text-[11px] px-2 py-1 rounded border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+                            title="跳到筆記並只顯示理論推導"
+                          >
+                            <i class="fas fa-pen mr-1"></i> 筆記
+                          </button>
+                        </div>
                       </div>
                       <div class="p-4">
                         <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.am.topic }}</div>
@@ -174,7 +183,16 @@
                           <span class="text-[10px] font-bold text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded mr-3 w-8 text-center">PM</span>
                           <span class="text-sm font-bold text-slate-200">HIGH PERFORMANCE CODING</span>
                         </div>
-                         <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.pm.topic }}</span>
+                         <div class="flex items-center space-x-3">
+                           <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.pm.topic }}</span>
+                           <button
+                             (click)="openJournalFor('code')"
+                             class="text-[11px] px-2 py-1 rounded border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition-colors"
+                             title="跳到筆記並只顯示實作筆記"
+                           >
+                             <i class="fas fa-pen mr-1"></i> 筆記
+                           </button>
+                         </div>
                       </div>
                       <div class="p-4">
                          <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.pm.topic }}</div>
@@ -201,7 +219,16 @@
                           <span class="text-[10px] font-bold text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded mr-3 w-8 text-center">NT</span>
                           <span class="text-sm font-bold text-slate-200">ALGO & REVIEW</span>
                         </div>
-                         <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.night.topic }}</span>
+                         <div class="flex items-center space-x-3">
+                           <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.night.topic }}</span>
+                           <button
+                             (click)="openJournalFor('idea')"
+                             class="text-[11px] px-2 py-1 rounded border border-purple-500/30 text-purple-300 hover:bg-purple-500/10 transition-colors"
+                             title="跳到筆記並只顯示靈感/總結"
+                           >
+                             <i class="fas fa-pen mr-1"></i> 筆記
+                           </button>
+                         </div>
                       </div>
                       <div class="p-4">
                          <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.night.topic }}</div>
@@ -224,7 +251,7 @@
                   </div>
 
                   <!-- Learning Journal + Python Scratch Pad -->
-                  <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden mt-6 flex flex-col max-h-[900px]">
+                  <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden mt-6 flex flex-col max-h-[900px]">
                       <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
                           <span class="text-sm font-bold text-slate-200">
                             <i class="fas fa-book-journal-whills text-emerald-500 mr-2"></i>Learning Journal
@@ -238,12 +265,47 @@
                               >
                                 <i class="fas fa-magic mr-1"></i> ✨ 生成總結
                               </button>
-                              <span class="text-xs text-slate-500">{{ currentDayLogs().length }} entries</span>
+                              <span class="text-xs text-slate-500">{{ filteredDayLogs().length }} / {{ currentDayLogs().length }} entries</span>
                           </div>
                       </div>
 
                       <div class="p-4 bg-slate-950 border-b border-slate-800">
-                           <div class="flex space-x-2 mb-3">
+                           <!-- 顯示篩選（只影響列表顯示） -->
+                           <div class="flex items-center justify-between mb-3">
+                              <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">顯示</span>
+                              <div class="flex flex-wrap gap-2">
+                                <button (click)="setJournalFilter('all')"
+                                  class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 text-slate-300 transition-all"
+                                  [class.bg-slate-700]="journalFilter() === 'all'"
+                                  [class.opacity-60]="journalFilter() !== 'all'"
+                                >全部</button>
+                                <button (click)="setJournalFilter('theory')"
+                                  class="px-2 py-1 rounded text-[11px] font-bold border border-yellow-500/30 text-yellow-400 transition-all"
+                                  [class.bg-yellow-500]="journalFilter() === 'theory'" [class.text-black]="journalFilter() === 'theory'"
+                                  [class.opacity-60]="journalFilter() !== 'theory'"
+                                >理論</button>
+                                <button (click)="setJournalFilter('code')"
+                                  class="px-2 py-1 rounded text-[11px] font-bold border border-blue-500/30 text-blue-400 transition-all"
+                                  [class.bg-blue-500]="journalFilter() === 'code'" [class.text-black]="journalFilter() === 'code'"
+                                  [class.opacity-60]="journalFilter() !== 'code'"
+                                >實作</button>
+                                <button (click)="setJournalFilter('bug')"
+                                  class="px-2 py-1 rounded text-[11px] font-bold border border-rose-500/30 text-rose-400 transition-all"
+                                  [class.bg-rose-500]="journalFilter() === 'bug'" [class.text-black]="journalFilter() === 'bug'"
+                                  [class.opacity-60]="journalFilter() !== 'bug'"
+                                >Debug</button>
+                                <button (click)="setJournalFilter('idea')"
+                                  class="px-2 py-1 rounded text-[11px] font-bold border border-emerald-500/30 text-emerald-400 transition-all"
+                                  [class.bg-emerald-500]="journalFilter() === 'idea'" [class.text-black]="journalFilter() === 'idea'"
+                                  [class.opacity-60]="journalFilter() !== 'idea'"
+                                >總結</button>
+                              </div>
+                           </div>
+
+                           <!-- 新增筆記類型（影響新增時會存的 type） -->
+                           <div class="flex items-center justify-between mb-3">
+                              <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">新增</span>
+                              <div class="flex flex-wrap gap-2">
                               <button (click)="setLogType('theory')" 
                                   [class.bg-yellow-500]="currentLogType() === 'theory'" [class.text-black]="currentLogType() === 'theory'" [class.opacity-50]="currentLogType() !== 'theory'"
                                   class="px-3 py-1 rounded text-xs font-bold border border-yellow-500/30 text-yellow-500 transition-all hover:opacity-100">
@@ -264,12 +326,13 @@
                                   class="px-3 py-1 rounded text-xs font-bold border border-emerald-500/30 text-emerald-500 transition-all hover:opacity-100">
                                   <i class="fas fa-lightbulb mr-1"></i> 靈感/總結
                               </button>
-                          </div>
+                              </div>
+                           </div>
 
                           <textarea 
                             [ngModel]="currentLogInput()"
                             (ngModelChange)="currentLogInput.set($event)"
-                            class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-50 placeholder-slate-600"
+                            class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-y min-h-[180px] placeholder-slate-600"
                             placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
                             (keydown.control.enter)="addLog()"
                           ></textarea>
@@ -285,12 +348,12 @@
                       </div>
 
                       <div class="overflow-y-auto flex-1 p-4 space-y-4 custom-scrollbar">
-                          @if (currentDayLogs().length === 0) {
+                          @if (filteredDayLogs().length === 0) {
                               <div class="text-center py-8 text-slate-600 italic text-sm">
-                                  No logs yet for {{ currentDaySchedule()?.day_id }}. <br> Start tracking your progress!
+                                  目前這個篩選沒有筆記（{{ currentDaySchedule()?.day_id }}）。<br>你可以切換「顯示」或新增一筆。
                               </div>
                           }
-                          @for (log of currentDayLogs(); track log.id) {
+                          @for (log of filteredDayLogs(); track log.id) {
                               <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
                                   [class.border-yellow-500]="log.type === 'theory'"
                                   [class.border-blue-500]="log.type === 'code'"
@@ -378,34 +441,7 @@
                   </div>
                </div>
 
-               <div class="bg-slate-950 border border-slate-800 rounded-xl p-6">
-                  <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">Daily Protocol</h3>
-                  <ul class="space-y-4 text-xs font-mono text-slate-400">
-                    <li class="flex justify-between items-center">
-                        <span>08:30</span> 
-                        <span class="text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-800">SYNC_TASKS.PY</span>
-                    </li>
-                    <li class="flex justify-between items-center">
-                        <span>09:00</span> 
-                        <span class="text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-800">DEEP WORK (THEORY)</span>
-                    </li>
-                    <li class="flex justify-between items-center">
-                        <span>13:30</span> 
-                        <span class="text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-800">IMPLEMENTATION</span>
-                    </li>
-                    <li class="flex justify-between items-center">
-                        <span>18:00</span> 
-                        <span class="text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-800">COMMIT & LOG</span>
-                    </li>
-                    <li class="flex justify-between items-center">
-                        <span>20:00</span> 
-                        <span class="text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-800">LEETCODE GRIND</span>
-                    </li>
-                  </ul>
-                  <div class="mt-4 pt-4 border-t border-slate-800 text-center">
-                     <span class="text-[10px] text-slate-600">SYSTEM STATUS: <span class="text-emerald-500">ONLINE ●</span></span>
-                  </div>
-               </div>
+               <!-- Daily Protocol 區塊已移除 -->
             </div>
 
           </div>
