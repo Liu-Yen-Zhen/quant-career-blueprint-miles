@@ -325,36 +325,102 @@ export class AppComponent {
   // --- D3 ---
   drawRadarChart(skills: { [key: string]: number }) {
     if (!this.radarChartContainer()) return;
-    const element = this.radarChartContainer()!.nativeElement;
+  
+    const element = this.radarChartContainer()!.nativeElement as HTMLElement;
     d3.select(element).selectAll('*').remove();
-    const width = 300, height = 300, margin = 60, radius = Math.min(width, height) / 2 - margin;
-    const svg = d3.select(element).append('svg').attr('width', width).attr('height', height).append('g').attr('transform', `translate(${width/2},${height/2})`);
-    
-    const axisConfig = [ { k: 'Math', l: '數學' }, { k: 'Coding', l: '程式' }, { k: 'Trading', l: '策略' }, { k: 'ML', l: '機器學習' }, { k: 'Micro', l: '微結構' } ];
+  
+    // ✅ 用容器實際大小畫圖（避免 CSS 縮放導致漂移）
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(240, Math.floor(Math.min(rect.width || 300, rect.height || 300))); // 最小 240，避免太小
+    const width = size;
+    const height = size;
+    const margin = Math.floor(size * 0.18);
+    const radius = Math.min(width, height) / 2 - margin;
+  
+    // ✅ 讓 SVG 用 viewBox + 100% 尺寸縮放，中心永遠穩
+    const svgRoot = d3
+      .select(element)
+      .append('svg')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
+      .style('width', '100%')
+      .style('height', '100%')
+      .style('display', 'block')
+      .style('margin', '0 auto');
+  
+    const svg = svgRoot
+      .append('g')
+      .attr('transform', `translate(${width / 2},${height / 2})`);
+  
+    const axisConfig = [
+      { k: 'Math', l: '數學' },
+      { k: 'Coding', l: '程式' },
+      { k: 'Trading', l: '策略' },
+      { k: 'ML', l: '機器學習' },
+      { k: 'Micro', l: '微結構' }
+    ];
+  
     const rScale = d3.scaleLinear().domain([0, 100]).range([0, radius]);
-    const angleSlice = Math.PI * 2 / axisConfig.length;
-
+    const angleSlice = (Math.PI * 2) / axisConfig.length;
+  
     // Grid
     [20, 40, 60, 80, 100].forEach(level => {
-      const coords = axisConfig.map((_, i) => ({ x: rScale(level) * Math.cos(angleSlice * i - Math.PI/2), y: rScale(level) * Math.sin(angleSlice * i - Math.PI/2) }));
-      svg.append('path').datum([...coords, coords[0]]).attr('d', d3.line<any>().x(d=>d.x).y(d=>d.y)).attr('fill', 'none').attr('stroke', '#334155').attr('stroke-width', 1);
+      const coords = axisConfig.map((_, i) => ({
+        x: rScale(level) * Math.cos(angleSlice * i - Math.PI / 2),
+        y: rScale(level) * Math.sin(angleSlice * i - Math.PI / 2)
+      }));
+      svg
+        .append('path')
+        .datum([...coords, coords[0]])
+        .attr('d', d3.line<any>().x(d => d.x).y(d => d.y))
+        .attr('fill', 'none')
+        .attr('stroke', '#334155')
+        .attr('stroke-width', 1);
     });
-
-    // Axes
+  
+    // Axes + Labels
     axisConfig.forEach((axis, i) => {
-      const x = rScale(100) * Math.cos(angleSlice * i - Math.PI/2);
-      const y = rScale(100) * Math.sin(angleSlice * i - Math.PI/2);
-      svg.append('line').attr('x1', 0).attr('y1', 0).attr('x2', x).attr('y2', y).attr('stroke', '#334155');
-      svg.append('text').attr('x', x * 1.15).attr('y', y * 1.15).text(axis.l).attr('text-anchor', 'middle').attr('dominant-baseline', 'middle').attr('fill', '#94a3b8').style('font-size', '12px');
+      const x = rScale(100) * Math.cos(angleSlice * i - Math.PI / 2);
+      const y = rScale(100) * Math.sin(angleSlice * i - Math.PI / 2);
+  
+      svg.append('line')
+        .attr('x1', 0).attr('y1', 0)
+        .attr('x2', x).attr('y2', y)
+        .attr('stroke', '#334155');
+  
+      svg.append('text')
+        .attr('x', x * 1.18)
+        .attr('y', y * 1.18)
+        .text(axis.l)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('fill', '#94a3b8')
+        .style('font-size', `${Math.max(11, Math.floor(size * 0.04))}px`);
     });
-
-    // Data
-    const dataCoords = axisConfig.map((axis, i) => ({ x: rScale(skills[axis.k] || 0) * Math.cos(angleSlice * i - Math.PI/2), y: rScale(skills[axis.k] || 0) * Math.sin(angleSlice * i - Math.PI/2) }));
-    svg.append('path').datum([...dataCoords, dataCoords[0]]).attr('d', d3.line<any>().x(d=>d.x).y(d=>d.y)).attr('fill', 'rgba(20, 184, 166, 0.2)').attr('stroke', '#14b8a6').attr('stroke-width', 2);
-    
+  
+    // Data polygon
+    const dataCoords = axisConfig.map((axis, i) => ({
+      x: rScale(skills[axis.k] || 0) * Math.cos(angleSlice * i - Math.PI / 2),
+      y: rScale(skills[axis.k] || 0) * Math.sin(angleSlice * i - Math.PI / 2)
+    }));
+  
+    svg.append('path')
+      .datum([...dataCoords, dataCoords[0]])
+      .attr('d', d3.line<any>().x(d => d.x).y(d => d.y))
+      .attr('fill', 'rgba(20, 184, 166, 0.2)')
+      .attr('stroke', '#14b8a6')
+      .attr('stroke-width', 2);
+  
     // Points
-    dataCoords.forEach(p => svg.append('circle').attr('cx', p.x).attr('cy', p.y).attr('r', 4).attr('fill', '#14b8a6'));
+    dataCoords.forEach(p => {
+      svg.append('circle')
+        .attr('cx', p.x)
+        .attr('cy', p.y)
+        .attr('r', Math.max(3, Math.floor(size * 0.013)))
+        .attr('fill', '#14b8a6');
+    });
   }
+
 
   // --- AI Wrappers ---
   async askAiTutor(concept: string) {
