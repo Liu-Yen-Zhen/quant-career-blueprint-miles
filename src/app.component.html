@@ -240,7 +240,7 @@
                   <div class="bg-slate-900/80 backdrop-blur-sm px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0 z-20">
                     <div class="flex items-center space-x-3">
                       <span class="text-sm font-bold text-slate-200 flex items-center">
-                        <i class="fas fa-book-journal-whills text-emerald-500 mr-2"></i>
+                        <img src="https://api.iconify.design/logos:journal.svg" class="w-5 h-5 mr-2 opacity-80 grayscale invert" alt="icon" />
                         Learning Journal
                       </span>
                     </div>
@@ -291,29 +291,25 @@
                       <button (click)="setLogType('theory')" 
                         [class]="currentLogType() === 'theory' ? 'bg-yellow-500 text-slate-950 border-yellow-500' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-yellow-500/50'"
                         class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        @if(currentLogType() !== 'theory') { <i class="fas fa-book-open mr-2"></i> }
-                        理論
+                        <i class="fas fa-book-open mr-2" [class.text-slate-900]="currentLogType() === 'theory'"></i> 理論
                       </button>
 
                       <button (click)="setLogType('code')"
                         [class]="currentLogType() === 'code' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-blue-500/50'"
                         class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        @if(currentLogType() !== 'code') { <i class="fas fa-code mr-2"></i> }
-                        實作
+                        <i class="fas fa-code mr-2"></i> 實作
                       </button>
 
                       <button (click)="setLogType('bug')"
                         [class]="currentLogType() === 'bug' ? 'bg-rose-600 text-white border-rose-600' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-rose-500/50'"
                         class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        @if(currentLogType() !== 'bug') { <i class="fas fa-bug mr-2"></i> }
-                        Debug
+                        <i class="fas fa-bug mr-2"></i> Debug
                       </button>
 
                       <button (click)="setLogType('idea')"
                         [class]="currentLogType() === 'idea' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-emerald-500/50'"
                         class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        @if(currentLogType() !== 'idea') { <i class="fas fa-lightbulb mr-2"></i> }
-                        靈感
+                        <i class="fas fa-lightbulb mr-2"></i> 靈感
                       </button>
                     </div>
 
