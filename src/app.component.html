@@ -235,142 +235,102 @@
               </div>
 
               <div class="lg:col-span-5">
-                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-100px)] shadow-xl">
-                  
-                  <div class="bg-slate-900/80 backdrop-blur-sm px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0 z-20">
-                    <div class="flex items-center space-x-3">
-                      <span class="text-sm font-bold text-slate-200 flex items-center">
-                        <img src="https://api.iconify.design/logos:journal.svg" class="w-5 h-5 mr-2 opacity-80 grayscale invert" alt="icon" />
-                        Learning Journal
-                      </span>
-                    </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-120px)] min-h-0">
+
+                  <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
+                    <span class="text-sm font-bold text-slate-200">
+                      <i class="fas fa-book-journal-whills text-emerald-500 mr-2"></i>Learning Journal
+                    </span>
 
                     <div class="flex items-center space-x-3">
-                      <button 
+                      <button
                         (click)="generateDailySummary()"
-                        class="flex items-center space-x-1.5 px-3 py-1 rounded border border-slate-700 bg-slate-800/50 text-xs font-medium text-blue-400 hover:bg-slate-800 hover:text-blue-300 transition-all group"
+                        class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium border border-cyan-500/30 px-2 py-1 rounded hover:bg-cyan-500/10"
+                        title="Generate Daily Recap with AI"
                       >
-                        <i class="fas fa-pen-nib text-[10px] group-hover:rotate-12 transition-transform"></i>
-                        <span>✨ 生成總結</span>
+                        <i class="fas fa-magic mr-1"></i> ✨ 生成總結
                       </button>
-                      <span class="text-xs text-slate-500 font-mono">{{ currentDayLogs().length }} entries</span>
+                      <span class="text-xs text-slate-500">{{ currentDayLogs().length }} entries</span>
                     </div>
                   </div>
 
-                  <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0 z-10 shadow-lg relative">
-                    
-                    <div class="flex flex-wrap gap-2 mb-4">
-                      <button (click)="setFilter('all')" 
-                        [class]="filterType() === 'all' ? 'bg-slate-800 text-white border-slate-600' : 'bg-transparent text-slate-400 border-slate-800 hover:border-slate-700'"
-                        class="px-3 py-1 rounded border text-xs font-bold transition-all">
-                        全部
-                      </button>
-                      <button (click)="setFilter('theory')"
-                        [class]="filterType() === 'theory' ? 'text-yellow-500 border-yellow-500/50 bg-yellow-500/10' : 'text-slate-400 border-slate-800 hover:border-yellow-500/30'"
-                        class="px-3 py-1 rounded border text-xs font-bold transition-all">
-                        理論
-                      </button>
-                      <button (click)="setFilter('code')"
-                        [class]="filterType() === 'code' ? 'text-blue-500 border-blue-500/50 bg-blue-500/10' : 'text-slate-400 border-slate-800 hover:border-blue-500/30'"
-                        class="px-3 py-1 rounded border text-xs font-bold transition-all">
-                        程式
-                      </button>
-                      <button (click)="setFilter('bug')"
-                        [class]="filterType() === 'bug' ? 'text-rose-500 border-rose-500/50 bg-rose-500/10' : 'text-slate-400 border-slate-800 hover:border-rose-500/30'"
-                        class="px-3 py-1 rounded border text-xs font-bold transition-all">
-                        Debug
-                      </button>
-                      <button (click)="setFilter('idea')"
-                        [class]="filterType() === 'idea' ? 'text-emerald-500 border-emerald-500/50 bg-emerald-500/10' : 'text-slate-400 border-slate-800 hover:border-emerald-500/30'"
-                        class="px-3 py-1 rounded border text-xs font-bold transition-all">
-                        靈感/總結
-                      </button>
-                    </div>
-
+                  <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0">
                     <div class="flex space-x-2 mb-3">
-                      <button (click)="setLogType('theory')" 
-                        [class]="currentLogType() === 'theory' ? 'bg-yellow-500 text-slate-950 border-yellow-500' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-yellow-500/50'"
-                        class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        <i class="fas fa-book-open mr-2" [class.text-slate-900]="currentLogType() === 'theory'"></i> 理論
+                      <button (click)="setLogType('theory')"
+                        [class.bg-yellow-500]="currentLogType() === 'theory'" [class.text-black]="currentLogType() === 'theory'" [class.opacity-50]="currentLogType() !== 'theory'"
+                        class="px-3 py-1 rounded text-xs font-bold border border-yellow-500/30 text-yellow-500 transition-all hover:opacity-100">
+                        <i class="fas fa-book-open mr-1"></i> 理論推導
                       </button>
-
                       <button (click)="setLogType('code')"
-                        [class]="currentLogType() === 'code' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-blue-500/50'"
-                        class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        <i class="fas fa-code mr-2"></i> 實作
+                        [class.bg-blue-500]="currentLogType() === 'code'" [class.text-black]="currentLogType() === 'code'" [class.opacity-50]="currentLogType() !== 'code'"
+                        class="px-3 py-1 rounded text-xs font-bold border border-blue-500/30 text-blue-500 transition-all hover:opacity-100">
+                        <i class="fas fa-code mr-1"></i> 實作筆記
                       </button>
-
                       <button (click)="setLogType('bug')"
-                        [class]="currentLogType() === 'bug' ? 'bg-rose-600 text-white border-rose-600' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-rose-500/50'"
-                        class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        <i class="fas fa-bug mr-2"></i> Debug
+                        [class.bg-rose-500]="currentLogType() === 'bug'" [class.text-black]="currentLogType() === 'bug'" [class.opacity-50]="currentLogType() !== 'bug'"
+                        class="px-3 py-1 rounded text-xs font-bold border border-rose-500/30 text-rose-500 transition-all hover:opacity-100">
+                        <i class="fas fa-bug mr-1"></i> Debug
                       </button>
-
                       <button (click)="setLogType('idea')"
-                        [class]="currentLogType() === 'idea' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-emerald-500/50'"
-                        class="flex-1 py-1.5 rounded border text-xs font-bold transition-all flex justify-center items-center">
-                        <i class="fas fa-lightbulb mr-2"></i> 靈感
+                        [class.bg-emerald-500]="currentLogType() === 'idea'" [class.text-black]="currentLogType() === 'idea'" [class.opacity-50]="currentLogType() !== 'idea'"
+                        class="px-3 py-1 rounded text-xs font-bold border border-emerald-500/30 text-emerald-500 transition-all hover:opacity-100">
+                        <i class="fas fa-lightbulb mr-1"></i> 靈感/總結
                       </button>
                     </div>
 
-                    <div class="relative group">
-                      <textarea 
-                        [ngModel]="currentLogInput()"
-                        (ngModelChange)="currentLogInput.set($event)"
-                        class="w-full bg-slate-900/50 text-slate-300 p-4 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-slate-600 focus:bg-slate-900 transition-all resize-none h-32 placeholder-slate-600 leading-relaxed font-mono"
-                        placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
-                        (keydown.control.enter)="addLog()"
-                      ></textarea>
-                      
-                      <div class="absolute bottom-3 right-3">
-                        <button 
-                          (click)="addLog()"
-                          [disabled]="!currentLogInput().trim()"
-                          class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 flex items-center"
-                        >
-                          <i class="fas fa-plus mr-1.5"></i> ADD ENTRY
-                        </button>
-                      </div>
+                    <textarea
+                      [ngModel]="currentLogInput()"
+                      (ngModelChange)="currentLogInput.set($event)"
+                      class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-28 placeholder-slate-600"
+                      placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
+                      (keydown.control.enter)="addLog()"
+                    ></textarea>
+
+                    <div class="flex justify-end mt-2">
+                      <button
+                        (click)="addLog()"
+                        [disabled]="!currentLogInput().trim()"
+                        class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-md transition-colors flex items-center"
+                      >
+                        <i class="fas fa-plus mr-1"></i> ADD ENTRY
+                      </button>
                     </div>
                   </div>
 
-                  <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-slate-950">
-                    
+                  <div class="flex-1 min-h-0 p-4 space-y-4 custom-scrollbar overflow-y-scroll"
+                       style="scrollbar-gutter: stable;">
                     @if (currentDayLogs().length === 0) {
-                      <div class="h-full flex flex-col items-center justify-center text-slate-600 opacity-60">
-                        <i class="fas fa-book-open text-4xl mb-3 text-slate-700"></i>
-                        <p class="text-sm italic">No entries yet for today.</p>
+                      <div class="text-center py-10 text-slate-600 italic text-sm">
+                        No logs yet for {{ currentDaySchedule()?.day_id }}. <br> Start tracking your progress!
                       </div>
                     }
 
                     @for (log of currentDayLogs(); track log.id) {
-                      <div class="relative bg-slate-900/30 rounded-r-lg border-l-2 pl-4 py-2 pr-2 group hover:bg-slate-900/60 transition-colors"
+                      <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
                            [class.border-yellow-500]="log.type === 'theory'"
                            [class.border-blue-500]="log.type === 'code'"
                            [class.border-rose-500]="log.type === 'bug'"
                            [class.border-emerald-500]="log.type === 'idea' || !log.type">
-                        
+
                         <div class="flex justify-between items-start mb-2">
-                          <div class="flex items-center space-x-3">
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider uppercase"
-                              [class.bg-yellow-500/20]="log.type === 'theory'" [class.text-yellow-500]="log.type === 'theory'"
-                              [class.bg-blue-500/20]="log.type === 'code'" [class.text-blue-500]="log.type === 'code'"
-                              [class.bg-rose-500/20]="log.type === 'bug'" [class.text-rose-500]="log.type === 'bug'"
-                              [class.bg-emerald-500/20]="log.type === 'idea' || !log.type" [class.text-emerald-500]="log.type === 'idea' || !log.type">
-                              {{ log.type || 'NOTE' }}
-                            </span>
-                            
-                            <span class="text-[11px] text-slate-500 font-mono">
+                          <div class="flex items-center space-x-2">
+                            @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span> }
+                            @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
+                            @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
+                            @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
+
+                            <span class="text-[10px] font-mono text-slate-500">
                               {{ log.timestamp | date:'yyyy-MM-dd HH:mm' }}
                             </span>
                           </div>
 
-                          <button (click)="deleteLog(log.id)" class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                          <button (click)="deleteLog(log.id)"
+                                  class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity px-2">
                             <i class="fas fa-trash-alt text-xs"></i>
                           </button>
                         </div>
 
-                        <div class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
+                        <div class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
                           <markdown [data]="log.content" katex clipboard></markdown>
                         </div>
                       </div>
@@ -519,7 +479,7 @@
       @if (activeTab() === 'project') {
         <div class="max-w-5xl mx-auto py-8 animate-fade-in">
           <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 text-slate-400">
-            這裡是 Project 區塊。
+            這裡是 Project 區塊（你原本的 project 內容可貼回來）。
           </div>
         </div>
       }
