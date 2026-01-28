@@ -39,6 +39,10 @@
         </div>
       }
     </nav>
+
+    <div class="p-4 border-t border-slate-800 bg-slate-950 text-xs text-center text-slate-600">
+      Powered by Google Gemini
+    </div>
   </aside>
 
   <main class="flex-1 flex flex-col h-screen overflow-hidden">
@@ -231,7 +235,7 @@
               </div>
 
               <div class="lg:col-span-5">
-                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 self-start h-[calc(100vh-120px)] min-h-0">
+                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-120px)] min-h-0">
 
                   <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
                     <span class="text-sm font-bold text-slate-200">
@@ -239,27 +243,6 @@
                     </span>
 
                     <div class="flex items-center space-x-3">
-                      <div class="flex items-center bg-slate-800/60 border border-slate-700 rounded-md overflow-hidden">
-                        <button
-                          (click)="setJournalScope('day')"
-                          class="px-2 py-1 text-[11px] font-bold transition-colors"
-                          [class.bg-slate-700]="journalScope() === 'day'"
-                          [class.text-white]="journalScope() === 'day'"
-                          [class.text-slate-400]="journalScope() !== 'day'"
-                        >
-                          今日
-                        </button>
-                        <button
-                          (click)="setJournalScope('week')"
-                          class="px-2 py-1 text-[11px] font-bold transition-colors"
-                          [class.bg-slate-700]="journalScope() === 'week'"
-                          [class.text-white]="journalScope() === 'week'"
-                          [class.text-slate-400]="journalScope() !== 'week'"
-                        >
-                          本週
-                        </button>
-                      </div>
-
                       <button
                         (click)="generateDailySummary()"
                         class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium border border-cyan-500/30 px-2 py-1 rounded hover:bg-cyan-500/10"
@@ -267,67 +250,11 @@
                       >
                         <i class="fas fa-magic mr-1"></i> ✨ 生成總結
                       </button>
-
-                      <span class="text-xs text-slate-500">
-                        {{ filteredJournalLogs().length }} / {{ journalBaseLogs().length }} entries
-                      </span>
+                      <span class="text-xs text-slate-500">{{ currentDayLogs().length }} entries</span>
                     </div>
                   </div>
 
                   <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0">
-
-                  <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar">
-                      <span class="text-[11px] font-bold text-slate-500 flex-shrink-0">顯示</span>
-
-                      <button (click)="setJournalFilter('all')"
-                        class="px-2.5 py-1 rounded text-[11px] font-bold border border-slate-700 text-slate-300 transition-all whitespace-nowrap"
-                        [class.bg-slate-800]="journalFilter() === 'all'"
-                        [class.text-white]="journalFilter() === 'all'"
-                        [class.opacity-60]="journalFilter() !== 'all'"
-                        title="顯示全部"
-                      >
-                        全部 <span class="text-[10px] text-slate-500 ml-1">({{ journalCounts().all }})</span>
-                      </button>
-
-                      <button (click)="setJournalFilter('theory')"
-                        class="px-2.5 py-1 rounded text-[11px] font-bold border border-yellow-500/30 text-yellow-500 transition-all whitespace-nowrap"
-                        [class.bg-yellow-500]="journalFilter() === 'theory'" [class.text-black]="journalFilter() === 'theory'" [class.opacity-50]="journalFilter() !== 'theory'"
-                        title="只看理論推導"
-                      >
-                        理論 <span class="text-[10px] opacity-80 ml-1">({{ journalCounts().theory }})</span>
-                      </button>
-
-                      <button (click)="setJournalFilter('code')"
-                        class="px-2.5 py-1 rounded text-[11px] font-bold border border-blue-500/30 text-blue-500 transition-all whitespace-nowrap"
-                        [class.bg-blue-500]="journalFilter() === 'code'" [class.text-black]="journalFilter() === 'code'" [class.opacity-50]="journalFilter() !== 'code'"
-                        title="只看實作筆記"
-                      >
-                        實作 <span class="text-[10px] opacity-80 ml-1">({{ journalCounts().code }})</span>
-                      </button>
-
-                      <button (click)="setJournalFilter('bug')"
-                        class="px-2.5 py-1 rounded text-[11px] font-bold border border-rose-500/30 text-rose-500 transition-all whitespace-nowrap"
-                        [class.bg-rose-500]="journalFilter() === 'bug'" [class.text-black]="journalFilter() === 'bug'" [class.opacity-50]="journalFilter() !== 'bug'"
-                        title="只看 Debug"
-                      >
-                        Debug <span class="text-[10px] opacity-80 ml-1">({{ journalCounts().bug }})</span>
-                      </button>
-
-                      <button (click)="setJournalFilter('idea')"
-                        class="px-2.5 py-1 rounded text-[11px] font-bold border border-emerald-500/30 text-emerald-500 transition-all whitespace-nowrap"
-                        [class.bg-emerald-500]="journalFilter() === 'idea'" [class.text-black]="journalFilter() === 'idea'" [class.opacity-50]="journalFilter() !== 'idea'"
-                        title="只看 靈感/總結"
-                      >
-                        靈感 <span class="text-[10px] opacity-80 ml-1">({{ journalCounts().idea }})</span>
-                      </button>
-                    </div>
-
-                    <div class="text-[11px] text-slate-600 flex-shrink-0">
-                      範圍：<span class="text-slate-400 font-bold">{{ journalScope() === 'week' ? '本週' : '今日' }}</span>
-                    </div>
-                  </div>
-
                     <div class="flex space-x-2 mb-3">
                       <button (click)="setLogType('theory')"
                         [class.bg-yellow-500]="currentLogType() === 'theory'" [class.text-black]="currentLogType() === 'theory'" [class.opacity-50]="currentLogType() !== 'theory'"
@@ -370,76 +297,25 @@
                     </div>
                   </div>
 
-                  <div class="flex-1 min-h-0 p-4 space-y-4 custom-scrollbar overflow-y-scroll overscroll-contain"
+                  <div class="flex-1 min-h-0 p-4 space-y-4 custom-scrollbar overflow-y-scroll"
                        style="scrollbar-gutter: stable;">
-                    @if (journalBaseLogs().length === 0) {
+                    @if (currentDayLogs().length === 0) {
                       <div class="text-center py-10 text-slate-600 italic text-sm">
-                        @if (journalScope() === 'week') {
-                          本週還沒有任何筆記。<br> 先從今天開始記錄吧！
-                        } @else {
-                          No logs yet for { currentDaySchedule()?.day_id }. <br> Start tracking your progress!
-                        }
+                        No logs yet for {{ currentDaySchedule()?.day_id }}. <br> Start tracking your progress!
                       </div>
-                    } @else {
-
-                      @if (journalScope() === 'week') {
-                        @if (groupedWeekLogs().length === 0) {
-                          <div class="text-center py-10 text-slate-600 italic text-sm">
-                            這個分類在本週沒有筆記（你可以切回「全部」看完整紀錄）。
-                          </div>
-                        }
-
-                        @for (group of groupedWeekLogs(); track group.dayId) {
-                          <div class="pt-1">
-                            <div class="text-xs font-bold text-slate-400 flex items-center justify-between">
-                              <div class="flex items-center">
-                                <span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[11px]">
-                                  { group.dayId }
-                                </span>
-                                @if (group.title) {
-                                  <span class="ml-2 text-slate-500 truncate text-[11px]">{ group.title }</span>
-                                }
-                              </div>
-                              <span class="text-[11px] text-slate-600">{ group.logs.length } 筆</span>
-                            </div>
-
-                            <div class="space-y-4 mt-3">
-                              @for (log of group.logs; track log.id) {
-                                <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
-                           [class.border-yellow-500]="log.type === 'theory'"
-                           [class.border-blue-500]="log.type === 'code'"
-                           [class.border-rose-500]="log.type === 'bug'"
-                           [class.border-emerald-500]="log.type === 'idea' || !log.type">
-
-                        <div class="flex justify-between items-start mb-2">
-                          <div class="flex items-center space-x-2">
-                            @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span>
-                              }
-                            </div>
-                          </div>
-                        }
-                      } @else {
-                        @if (filteredJournalLogs().length === 0) {
-                          <div class="text-center py-10 text-slate-600 italic text-sm">
-                            這個分類目前沒有筆記（你可以切回「全部」看完整紀錄）。
-                          </div>
-                        }
-
-                        @for (log of filteredJournalLogs(); track log.id) {
-                          <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
-                           [class.border-yellow-500]="log.type === 'theory'"
-                           [class.border-blue-500]="log.type === 'code'"
-                           [class.border-rose-500]="log.type === 'bug'"
-                           [class.border-emerald-500]="log.type === 'idea' || !log.type">
-
-                        <div class="flex justify-between items-start mb-2">
-                          <div class="flex items-center space-x-2">
-                            @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span>
-                        }
-                      }
-
                     }
-@if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
+
+                    @for (log of currentDayLogs(); track log.id) {
+                      <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
+                           [class.border-yellow-500]="log.type === 'theory'"
+                           [class.border-blue-500]="log.type === 'code'"
+                           [class.border-rose-500]="log.type === 'bug'"
+                           [class.border-emerald-500]="log.type === 'idea' || !log.type">
+
+                        <div class="flex justify-between items-start mb-2">
+                          <div class="flex items-center space-x-2">
+                            @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span> }
+                            @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
                             @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
                             @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
 
