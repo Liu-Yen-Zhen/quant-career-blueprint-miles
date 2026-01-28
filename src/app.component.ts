@@ -43,6 +43,7 @@ interface LogEntry {
 export class AppComponent {
   private geminiService = inject(GeminiService);
   radarChartContainer = viewChild<ElementRef>('radarChart');
+  journalSection = viewChild<ElementRef>('journalSection');
 
   // --- State ---
   activeTab = signal<'roadmap' | 'interview' | 'project'>('roadmap');
@@ -54,6 +55,8 @@ export class AppComponent {
   learningLogs = signal<LogEntry[]>([]);
   currentLogInput = signal<string>('');
   currentLogType = signal<'theory' | 'code' | 'bug' | 'idea'>('idea'); // 新增當前筆記類型
+  // Learning Journal 顯示篩選（解決筆記全部混在一起）
+  journalFilter = signal<'all' | 'theory' | 'code' | 'bug' | 'idea'>('all');
 
   // AI & Interview State
   tutorLoading = signal<boolean>(false);
@@ -238,6 +241,14 @@ export class AppComponent {
     return this.learningLogs().filter(l => l.dayId === dayId).sort((a, b) => b.timestamp - a.timestamp);
   });
 
+  // 依照「顯示篩選」過濾當天筆記（避免全部混在一起）
+  filteredDayLogs = computed(() => {
+    const filter = this.journalFilter();
+    const logs = this.currentDayLogs();
+    if (filter === 'all') return logs;
+    return logs.filter(l => (l.type || 'idea') === filter);
+  });
+
   // --- Actions ---
   selectWeek(id: number) { this.selectedWeekId.set(id); this.selectedDayIndex.set(0); this.resetAI(); }
   selectDay(index: number) { this.selectedDayIndex.set(index); }
@@ -256,6 +267,21 @@ export class AppComponent {
   // 新增：切換筆記類型
   setLogType(type: 'theory' | 'code' | 'bug' | 'idea') {
     this.currentLogType.set(type);
+  }
+
+  // Learning Journal：切換「顯示」篩選（只影響列表顯示，不影響新增筆記類型）
+  setJournalFilter(filter: 'all' | 'theory' | 'code' | 'bug' | 'idea') {
+    this.journalFilter.set(filter);
+  }
+
+  // 從 AM/PM/NT 區塊一鍵跳到 Learning Journal，並自動切到對應模組
+  openJournalFor(type: 'theory' | 'code' | 'bug' | 'idea') {
+    this.setLogType(type);
+    this.setJournalFilter(type);
+    queueMicrotask(() => {
+      const el = this.journalSection()?.nativeElement as HTMLElement | undefined;
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   // 修改：儲存時加入 type
@@ -299,36 +325,102 @@ export class AppComponent {
   // --- D3 ---
   drawRadarChart(skills: { [key: string]: number }) {
     if (!this.radarChartContainer()) return;
-    const element = this.radarChartContainer()!.nativeElement;
+  
+    const element = this.radarChartContainer()!.nativeElement as HTMLElement;
     d3.select(element).selectAll('*').remove();
-    const width = 300, height = 300, margin = 60, radius = Math.min(width, height) / 2 - margin;
-    const svg = d3.select(element).append('svg').attr('width', width).attr('height', height).append('g').attr('transform', `translate(${width/2},${height/2})`);
-    
-    const axisConfig = [ { k: 'Math', l: '數學' }, { k: 'Coding', l: '程式' }, { k: 'Trading', l: '策略' }, { k: 'ML', l: '機器學習' }, { k: 'Micro', l: '微結構' } ];
+  
+    // ✅ 用容器實際大小畫圖（避免 CSS 縮放導致漂移）
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(240, Math.floor(Math.min(rect.width || 300, rect.height || 300))); // 最小 240，避免太小
+    const width = size;
+    const height = size;
+    const margin = Math.floor(size * 0.18);
+    const radius = Math.min(width, height) / 2 - margin;
+  
+    // ✅ 讓 SVG 用 viewBox + 100% 尺寸縮放，中心永遠穩
+    const svgRoot = d3
+      .select(element)
+      .append('svg')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
+      .style('width', '100%')
+      .style('height', '100%')
+      .style('display', 'block')
+      .style('margin', '0 auto');
+  
+    const svg = svgRoot
+      .append('g')
+      .attr('transform', `translate(${width / 2},${height / 2})`);
+  
+    const axisConfig = [
+      { k: 'Math', l: '數學' },
+      { k: 'Coding', l: '程式' },
+      { k: 'Trading', l: '策略' },
+      { k: 'ML', l: '機器學習' },
+      { k: 'Micro', l: '微結構' }
+    ];
+  
     const rScale = d3.scaleLinear().domain([0, 100]).range([0, radius]);
-    const angleSlice = Math.PI * 2 / axisConfig.length;
-
+    const angleSlice = (Math.PI * 2) / axisConfig.length;
+  
     // Grid
     [20, 40, 60, 80, 100].forEach(level => {
-      const coords = axisConfig.map((_, i) => ({ x: rScale(level) * Math.cos(angleSlice * i - Math.PI/2), y: rScale(level) * Math.sin(angleSlice * i - Math.PI/2) }));
-      svg.append('path').datum([...coords, coords[0]]).attr('d', d3.line<any>().x(d=>d.x).y(d=>d.y)).attr('fill', 'none').attr('stroke', '#334155').attr('stroke-width', 1);
+      const coords = axisConfig.map((_, i) => ({
+        x: rScale(level) * Math.cos(angleSlice * i - Math.PI / 2),
+        y: rScale(level) * Math.sin(angleSlice * i - Math.PI / 2)
+      }));
+      svg
+        .append('path')
+        .datum([...coords, coords[0]])
+        .attr('d', d3.line<any>().x(d => d.x).y(d => d.y))
+        .attr('fill', 'none')
+        .attr('stroke', '#334155')
+        .attr('stroke-width', 1);
     });
-
-    // Axes
+  
+    // Axes + Labels
     axisConfig.forEach((axis, i) => {
-      const x = rScale(100) * Math.cos(angleSlice * i - Math.PI/2);
-      const y = rScale(100) * Math.sin(angleSlice * i - Math.PI/2);
-      svg.append('line').attr('x1', 0).attr('y1', 0).attr('x2', x).attr('y2', y).attr('stroke', '#334155');
-      svg.append('text').attr('x', x * 1.15).attr('y', y * 1.15).text(axis.l).attr('text-anchor', 'middle').attr('dominant-baseline', 'middle').attr('fill', '#94a3b8').style('font-size', '12px');
+      const x = rScale(100) * Math.cos(angleSlice * i - Math.PI / 2);
+      const y = rScale(100) * Math.sin(angleSlice * i - Math.PI / 2);
+  
+      svg.append('line')
+        .attr('x1', 0).attr('y1', 0)
+        .attr('x2', x).attr('y2', y)
+        .attr('stroke', '#334155');
+  
+      svg.append('text')
+        .attr('x', x * 1.18)
+        .attr('y', y * 1.18)
+        .text(axis.l)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('fill', '#94a3b8')
+        .style('font-size', `${Math.max(11, Math.floor(size * 0.04))}px`);
     });
-
-    // Data
-    const dataCoords = axisConfig.map((axis, i) => ({ x: rScale(skills[axis.k] || 0) * Math.cos(angleSlice * i - Math.PI/2), y: rScale(skills[axis.k] || 0) * Math.sin(angleSlice * i - Math.PI/2) }));
-    svg.append('path').datum([...dataCoords, dataCoords[0]]).attr('d', d3.line<any>().x(d=>d.x).y(d=>d.y)).attr('fill', 'rgba(20, 184, 166, 0.2)').attr('stroke', '#14b8a6').attr('stroke-width', 2);
-    
+  
+    // Data polygon
+    const dataCoords = axisConfig.map((axis, i) => ({
+      x: rScale(skills[axis.k] || 0) * Math.cos(angleSlice * i - Math.PI / 2),
+      y: rScale(skills[axis.k] || 0) * Math.sin(angleSlice * i - Math.PI / 2)
+    }));
+  
+    svg.append('path')
+      .datum([...dataCoords, dataCoords[0]])
+      .attr('d', d3.line<any>().x(d => d.x).y(d => d.y))
+      .attr('fill', 'rgba(20, 184, 166, 0.2)')
+      .attr('stroke', '#14b8a6')
+      .attr('stroke-width', 2);
+  
     // Points
-    dataCoords.forEach(p => svg.append('circle').attr('cx', p.x).attr('cy', p.y).attr('r', 4).attr('fill', '#14b8a6'));
+    dataCoords.forEach(p => {
+      svg.append('circle')
+        .attr('cx', p.x)
+        .attr('cy', p.y)
+        .attr('r', Math.max(3, Math.floor(size * 0.013)))
+        .attr('fill', '#14b8a6');
+    });
   }
+
 
   // --- AI Wrappers ---
   async askAiTutor(concept: string) {
