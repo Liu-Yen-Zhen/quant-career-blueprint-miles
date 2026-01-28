@@ -260,52 +260,101 @@
 
                   <!-- Input Area -->
                   <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0">
+                    <!-- View Filter Buttons -->
+                    <div class="flex space-x-2 mb-4">
+                      <button (click)="setLogFilter('all')" 
+                        [class.bg-white]="currentLogFilter() === 'all'" 
+                        [class.text-black]="currentLogFilter() === 'all'"
+                        [class.border-slate-700]="currentLogFilter() !== 'all'"
+                        [class.text-slate-400]="currentLogFilter() !== 'all'"
+                        class="px-3 py-1.5 rounded text-xs font-bold border transition-all">
+                        全部
+                      </button>
+                      <button (click)="setLogFilter('theory')" 
+                        [class.bg-yellow-500]="currentLogFilter() === 'theory'" 
+                        [class.text-black]="currentLogFilter() === 'theory'"
+                        [class.border-yellow-500/30]="currentLogFilter() !== 'theory'"
+                        [class.text-yellow-500]="currentLogFilter() !== 'theory'"
+                        class="px-3 py-1.5 rounded text-xs font-bold border transition-all">
+                        理論
+                      </button>
+                      <button (click)="setLogFilter('code')" 
+                        [class.bg-blue-500]="currentLogFilter() === 'code'" 
+                        [class.text-black]="currentLogFilter() === 'code'"
+                        [class.border-blue-500/30]="currentLogFilter() !== 'code'"
+                        [class.text-blue-500]="currentLogFilter() !== 'code'"
+                        class="px-3 py-1.5 rounded text-xs font-bold border transition-all">
+                        程式
+                      </button>
+                      <button (click)="setLogFilter('bug')" 
+                        [class.bg-rose-500]="currentLogFilter() === 'bug'" 
+                        [class.text-black]="currentLogFilter() === 'bug'"
+                        [class.border-rose-500/30]="currentLogFilter() !== 'bug'"
+                        [class.text-rose-500]="currentLogFilter() !== 'bug'"
+                        class="px-3 py-1.5 rounded text-xs font-bold border transition-all">
+                        Debug
+                      </button>
+                      <button (click)="setLogFilter('idea')" 
+                        [class.bg-emerald-500]="currentLogFilter() === 'idea'" 
+                        [class.text-black]="currentLogFilter() === 'idea'"
+                        [class.border-emerald-500/30]="currentLogFilter() !== 'idea'"
+                        [class.text-emerald-500]="currentLogFilter() !== 'idea'"
+                        class="px-3 py-1.5 rounded text-xs font-bold border transition-all">
+                        靈感/總結
+                      </button>
+                    </div>
+
+                    <!-- Entry Type Buttons -->
                     <div class="flex space-x-2 mb-3">
                       <button (click)="setLogType('theory')" 
                         [class.bg-yellow-500]="currentLogType() === 'theory'" 
-                        [class.text-black]="currentLogType() === 'theory'" 
-                        [class.opacity-50]="currentLogType() !== 'theory'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-yellow-500/30 text-yellow-500 transition-all hover:opacity-100">
-                        <i class="fas fa-book-open mr-1"></i> 理論推導
+                        [class.text-black]="currentLogType() === 'theory'"
+                        [class.bg-slate-900]="currentLogType() !== 'theory'"
+                        [class.text-yellow-500]="currentLogType() !== 'theory'"
+                        class="px-4 py-2 rounded-md text-sm font-bold border border-yellow-500/30 transition-all hover:bg-yellow-500 hover:text-black">
+                        <i class="fas fa-book-open mr-2"></i> 實作筆記
                       </button>
                       <button (click)="setLogType('code')" 
                         [class.bg-blue-500]="currentLogType() === 'code'" 
-                        [class.text-black]="currentLogType() === 'code'" 
-                        [class.opacity-50]="currentLogType() !== 'code'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-blue-500/30 text-blue-500 transition-all hover:opacity-100">
-                        <i class="fas fa-code mr-1"></i> 實作筆記
+                        [class.text-black]="currentLogType() === 'code'"
+                        [class.bg-slate-900]="currentLogType() !== 'code'"
+                        [class.text-blue-500]="currentLogType() !== 'code'"
+                        class="px-4 py-2 rounded-md text-sm font-bold border border-blue-500/30 transition-all hover:bg-blue-500 hover:text-black">
+                        <i class="fas fa-code mr-2"></i> 實作筆記
                       </button>
                       <button (click)="setLogType('bug')" 
                         [class.bg-rose-500]="currentLogType() === 'bug'" 
-                        [class.text-black]="currentLogType() === 'bug'" 
-                        [class.opacity-50]="currentLogType() !== 'bug'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-rose-500/30 text-rose-500 transition-all hover:opacity-100">
-                        <i class="fas fa-bug mr-1"></i> Debug
+                        [class.text-black]="currentLogType() === 'bug'"
+                        [class.bg-slate-900]="currentLogType() !== 'bug'"
+                        [class.text-rose-500]="currentLogType() !== 'bug'"
+                        class="px-4 py-2 rounded-md text-sm font-bold border border-rose-500/30 transition-all hover:bg-rose-500 hover:text-black">
+                        <i class="fas fa-bug mr-2"></i> Debug
                       </button>
                       <button (click)="setLogType('idea')" 
                         [class.bg-emerald-500]="currentLogType() === 'idea'" 
-                        [class.text-black]="currentLogType() === 'idea'" 
-                        [class.opacity-50]="currentLogType() !== 'idea'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-emerald-500/30 text-emerald-500 transition-all hover:opacity-100">
-                        <i class="fas fa-lightbulb mr-1"></i> 靈感/總結
+                        [class.text-black]="currentLogType() === 'idea'"
+                        [class.bg-slate-900]="currentLogType() !== 'idea'"
+                        [class.text-emerald-500]="currentLogType() !== 'idea'"
+                        class="px-4 py-2 rounded-md text-sm font-bold border border-emerald-500/30 transition-all hover:bg-emerald-500 hover:text-black">
+                        <i class="fas fa-lightbulb mr-2"></i> 靈感/總結
                       </button>
                     </div>
 
                     <textarea 
                       [ngModel]="currentLogInput()"
                       (ngModelChange)="currentLogInput.set($event)"
-                      class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-28 placeholder-slate-600"
+                      class="w-full bg-slate-900 text-slate-300 p-4 text-sm rounded-lg border border-slate-700 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none h-40 placeholder-slate-500"
                       placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
                       (keydown.control.enter)="addLog()"
                     ></textarea>
 
-                    <div class="flex justify-end mt-2">
+                    <div class="flex justify-end mt-3">
                       <button 
                         (click)="addLog()"
                         [disabled]="!currentLogInput().trim()"
-                        class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-md transition-colors flex items-center"
+                        class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-md transition-colors flex items-center"
                       >
-                        <i class="fas fa-plus mr-1"></i> ADD ENTRY
+                        <i class="fas fa-plus mr-2"></i> ADD ENTRY
                       </button>
                     </div>
                   </div>
@@ -318,13 +367,17 @@
                   -->
                   <div class="flex-1 min-h-0 p-4 space-y-4 custom-scrollbar overflow-y-scroll"
                        style="scrollbar-gutter: stable;">
-                    @if (currentDayLogs().length === 0) {
+                    @if (filteredDayLogs().length === 0) {
                       <div class="text-center py-10 text-slate-600 italic text-sm">
-                        No logs yet for {{ currentDaySchedule()?.day_id }}. <br> Start tracking your progress!
+                        @if (currentLogFilter() === 'all') {
+                          No logs yet for {{ currentDaySchedule()?.day_id }}. <br> Start tracking your progress!
+                        } @else {
+                          No {{ currentLogFilter() }} logs for {{ currentDaySchedule()?.day_id }}.
+                        }
                       </div>
                     }
                     
-                    @for (log of currentDayLogs(); track log.id) {
+                    @for (log of filteredDayLogs(); track log.id) {
                       <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
                            [class.border-yellow-500]="log.type === 'theory'"
                            [class.border-blue-500]="log.type === 'code'"
