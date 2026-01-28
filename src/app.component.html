@@ -39,8 +39,11 @@
         </div>
       }
     </nav>
-    
-    </aside>
+
+    <div class="p-4 border-t border-slate-800 bg-slate-950 text-xs text-center text-slate-600">
+      Powered by Google Gemini
+    </div>
+  </aside>
 
   <main class="flex-1 flex flex-col h-screen overflow-hidden">
     
@@ -173,10 +176,10 @@
                       <span class="text-[10px] font-bold text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded mr-3 w-8 text-center">PM</span>
                       <span class="text-sm font-bold text-slate-200">HIGH PERFORMANCE CODING</span>
                     </div>
-                      <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.pm.topic }}</span>
+                     <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.pm.topic }}</span>
                   </div>
                   <div class="p-4">
-                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.pm.topic }}</div>
+                     <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.pm.topic }}</div>
                     <ul class="space-y-2">
                       @for (task of day.pm.tasks; track task) {
                         <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(task)">
@@ -204,10 +207,10 @@
                       <span class="text-[10px] font-bold text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded mr-3 w-8 text-center">NT</span>
                       <span class="text-sm font-bold text-slate-200">ALGO & REVIEW</span>
                     </div>
-                      <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.night.topic }}</span>
+                     <span class="text-xs text-slate-500 font-mono hidden sm:inline">{{ day.night.topic }}</span>
                   </div>
                   <div class="p-4">
-                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.night.topic }}</div>
+                     <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.night.topic }}</div>
                     <ul class="space-y-2">
                       @for (task of day.night.tasks; track task) {
                         <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(task)">
@@ -232,9 +235,9 @@
               </div>
 
               <div class="lg:col-span-5">
-                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-120px)] min-h-0 shadow-lg">
+                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-120px)] min-h-0">
 
-                  <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0 z-20">
+                  <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
                     <span class="text-sm font-bold text-slate-200">
                       <i class="fas fa-book-journal-whills text-emerald-500 mr-2"></i>Learning Journal
                     </span>
@@ -251,7 +254,7 @@
                     </div>
                   </div>
 
-                  <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0 z-10">
+                  <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0">
                     <div class="flex space-x-2 mb-3">
                       <button (click)="setLogType('theory')"
                         [class.bg-yellow-500]="currentLogType() === 'theory'" [class.text-black]="currentLogType() === 'theory'" [class.opacity-50]="currentLogType() !== 'theory'"
@@ -278,7 +281,7 @@
                     <textarea
                       [ngModel]="currentLogInput()"
                       (ngModelChange)="currentLogInput.set($event)"
-                      class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-24 placeholder-slate-600"
+                      class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-28 placeholder-slate-600"
                       placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
                       (keydown.control.enter)="addLog()"
                     ></textarea>
@@ -294,43 +297,8 @@
                     </div>
                   </div>
 
-                  <div class="px-4 py-2 border-b border-slate-800 bg-slate-900/50 flex items-center space-x-1 overflow-x-auto no-scrollbar flex-shrink-0">
-                    <span class="text-[10px] text-slate-500 uppercase font-bold mr-2">View:</span>
-                    <button (click)="setFilter('all')" 
-                       class="px-2.5 py-1 rounded text-[10px] font-bold transition-colors border"
-                       [class.bg-slate-700]="filterType() === 'all'" [class.text-white]="filterType() === 'all'" [class.border-slate-600]="filterType() === 'all'"
-                       [class.text-slate-400]="filterType() !== 'all'" [class.border-transparent]="filterType() !== 'all'" [class.hover:bg-slate-800]="filterType() !== 'all'">
-                       ALL
-                    </button>
-                    <button (click)="setFilter('theory')" 
-                       class="px-2.5 py-1 rounded text-[10px] font-bold transition-colors border"
-                       [class.bg-yellow-500/20]="filterType() === 'theory'" [class.text-yellow-500]="filterType() === 'theory'" [class.border-yellow-500/30]="filterType() === 'theory'"
-                       [class.text-slate-500]="filterType() !== 'theory'" [class.border-transparent]="filterType() !== 'theory'" [class.hover:text-yellow-500]="filterType() !== 'theory'">
-                       MATH
-                    </button>
-                    <button (click)="setFilter('code')" 
-                       class="px-2.5 py-1 rounded text-[10px] font-bold transition-colors border"
-                       [class.bg-blue-500/20]="filterType() === 'code'" [class.text-blue-500]="filterType() === 'code'" [class.border-blue-500/30]="filterType() === 'code'"
-                       [class.text-slate-500]="filterType() !== 'code'" [class.border-transparent]="filterType() !== 'code'" [class.hover:text-blue-500]="filterType() !== 'code'">
-                       CODE
-                    </button>
-                    <button (click)="setFilter('bug')" 
-                       class="px-2.5 py-1 rounded text-[10px] font-bold transition-colors border"
-                       [class.bg-rose-500/20]="filterType() === 'bug'" [class.text-rose-500]="filterType() === 'bug'" [class.border-rose-500/30]="filterType() === 'bug'"
-                       [class.text-slate-500]="filterType() !== 'bug'" [class.border-transparent]="filterType() !== 'bug'" [class.hover:text-rose-500]="filterType() !== 'bug'">
-                       FIX
-                    </button>
-                    <button (click)="setFilter('idea')" 
-                       class="px-2.5 py-1 rounded text-[10px] font-bold transition-colors border"
-                       [class.bg-emerald-500/20]="filterType() === 'idea'" [class.text-emerald-500]="filterType() === 'idea'" [class.border-emerald-500/30]="filterType() === 'idea'"
-                       [class.text-slate-500]="filterType() !== 'idea'" [class.border-transparent]="filterType() !== 'idea'" [class.hover:text-emerald-500]="filterType() !== 'idea'">
-                       NOTE
-                    </button>
-                  </div>
-
                   <div class="flex-1 min-h-0 p-4 space-y-4 custom-scrollbar overflow-y-scroll"
                        style="scrollbar-gutter: stable;">
-                    
                     @if (currentDayLogs().length === 0) {
                       <div class="text-center py-10 text-slate-600 italic text-sm">
                         No logs yet for {{ currentDaySchedule()?.day_id }}. <br> Start tracking your progress!
@@ -338,36 +306,34 @@
                     }
 
                     @for (log of currentDayLogs(); track log.id) {
-                      @if (filterType() === 'all' || filterType() === log.type) {
-                        <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
-                             [class.border-yellow-500]="log.type === 'theory'"
-                             [class.border-blue-500]="log.type === 'code'"
-                             [class.border-rose-500]="log.type === 'bug'"
-                             [class.border-emerald-500]="log.type === 'idea' || !log.type">
+                      <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
+                           [class.border-yellow-500]="log.type === 'theory'"
+                           [class.border-blue-500]="log.type === 'code'"
+                           [class.border-rose-500]="log.type === 'bug'"
+                           [class.border-emerald-500]="log.type === 'idea' || !log.type">
 
-                          <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center space-x-2">
-                              @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span> }
-                              @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
-                              @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
-                              @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
+                        <div class="flex justify-between items-start mb-2">
+                          <div class="flex items-center space-x-2">
+                            @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span> }
+                            @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
+                            @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
+                            @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
 
-                              <span class="text-[10px] font-mono text-slate-500">
-                                {{ log.timestamp | date:'HH:mm' }}
-                              </span>
-                            </div>
-
-                            <button (click)="deleteLog(log.id)"
-                                    class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity px-2">
-                              <i class="fas fa-trash-alt text-xs"></i>
-                            </button>
+                            <span class="text-[10px] font-mono text-slate-500">
+                              {{ log.timestamp | date:'yyyy-MM-dd HH:mm' }}
+                            </span>
                           </div>
 
-                          <div class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                            <markdown [data]="log.content" katex clipboard></markdown>
-                          </div>
+                          <button (click)="deleteLog(log.id)"
+                                  class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity px-2">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                          </button>
                         </div>
-                      }
+
+                        <div class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                          <markdown [data]="log.content" katex clipboard></markdown>
+                        </div>
+                      </div>
                     }
                   </div>
 
