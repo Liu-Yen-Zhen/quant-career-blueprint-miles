@@ -29,7 +29,7 @@ interface LogEntry {
   dayId: string;
   timestamp: number;
   content: string;
-  type?: 'theory' | 'code' | 'bug' | 'idea'; // 新增 type（舊資料可能沒有）
+  type: 'theory' | 'code' | 'bug' | 'idea'; // 新增 type
 }
 
 @Component({
@@ -57,8 +57,6 @@ export class AppComponent {
   currentLogType = signal<'theory' | 'code' | 'bug' | 'idea'>('idea'); // 新增當前筆記類型
   // Learning Journal 顯示篩選（解決筆記全部混在一起）
   journalFilter = signal<'all' | 'theory' | 'code' | 'bug' | 'idea'>('all');
-  // Learning Journal 顯示範圍：今日 / 本週
-  journalScope = signal<'day' | 'week'>('day');
 
   // AI & Interview State
   tutorLoading = signal<boolean>(false);
@@ -243,63 +241,12 @@ export class AppComponent {
     return this.learningLogs().filter(l => l.dayId === dayId).sort((a, b) => b.timestamp - a.timestamp);
   });
 
-  // 本週所有筆記（依照本週的 day_id 篩出）
-  currentWeekLogs = computed(() => {
-    const dayIds = this.currentWeekSchedule().map(d => d.day_id);
-    const set = new Set(dayIds);
-    return this.learningLogs().filter(l => set.has(l.dayId)).sort((a, b) => b.timestamp - a.timestamp);
-  });
-
-  // Learning Journal：顯示範圍（今日 / 本週）
-  journalBaseLogs = computed(() => this.journalScope() === 'week' ? this.currentWeekLogs() : this.currentDayLogs());
-
-  // Learning Journal：依照分類篩選（All/MATH/CODE/FIX/NOTE）
-  filteredJournalLogs = computed(() => {
+  // 依照「顯示篩選」過濾當天筆記（避免全部混在一起）
+  filteredDayLogs = computed(() => {
     const filter = this.journalFilter();
-    const logs = this.journalBaseLogs();
+    const logs = this.currentDayLogs();
     if (filter === 'all') return logs;
     return logs.filter(l => (l.type || 'idea') === filter);
-  });
-
-  // 週檢視：依 day 分組（只回傳有內容的日子）
-  groupedWeekLogs = computed(() => {
-    if (this.journalScope() !== 'week') return [];
-    const schedule = this.currentWeekSchedule();
-    const dayOrder = schedule.map(d => d.day_id);
-    const titleMap = new Map(schedule.map(d => [d.day_id, d.title]));
-    const logs = this.filteredJournalLogs();
-
-    const map = new Map<string, LogEntry[]>();
-    for (const l of logs) {
-      const key = l.dayId;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(l);
-    }
-
-    return dayOrder
-      .map(dayId => ({
-        dayId,
-        title: titleMap.get(dayId) || '',
-        logs: (map.get(dayId) || []).sort((a, b) => b.timestamp - a.timestamp),
-      }))
-      .filter(g => g.logs.length > 0);
-  });
-
-  // 顯示用筆記數量統計（依範圍：今日/本週）
-  journalCounts = computed(() => {
-    const logs = this.journalBaseLogs();
-    const counts: { all: number; theory: number; code: number; bug: number; idea: number } = {
-      all: logs.length,
-      theory: 0,
-      code: 0,
-      bug: 0,
-      idea: 0
-    };
-    for (const l of logs) {
-      const t = (l.type || 'idea') as 'theory' | 'code' | 'bug' | 'idea';
-      counts[t] += 1;
-    }
-    return counts;
   });
 
   // --- Actions ---
@@ -325,11 +272,6 @@ export class AppComponent {
   // Learning Journal：切換「顯示」篩選（只影響列表顯示，不影響新增筆記類型）
   setJournalFilter(filter: 'all' | 'theory' | 'code' | 'bug' | 'idea') {
     this.journalFilter.set(filter);
-  }
-
-  // Learning Journal：切換顯示範圍（今日 / 本週）
-  setJournalScope(scope: 'day' | 'week') {
-    this.journalScope.set(scope);
   }
 
   // 從 AM/PM/NT 區塊一鍵跳到 Learning Journal，並自動切到對應模組
