@@ -4,7 +4,6 @@ import { GeminiService } from './services/gemini.service';
 import { MarkdownModule, provideMarkdown } from 'ngx-markdown';
 import { FormsModule } from '@angular/forms';
 import * as d3 from 'd3';
-
 interface WeekData {
   id: number;
   title: string;
@@ -30,6 +29,7 @@ interface LogEntry {
   timestamp: number;
   content: string;
   type: 'theory' | 'code' | 'bug' | 'idea'; // 新增 type
+  category: string; // 新增分類（用於日後回顧篩選/分組）
 }
 
 @Component({
@@ -57,6 +57,20 @@ export class AppComponent {
   currentLogType = signal<'theory' | 'code' | 'bug' | 'idea'>('idea'); // 新增當前筆記類型
   // Learning Journal 顯示篩選（解決筆記全部混在一起）
   journalFilter = signal<'all' | 'theory' | 'code' | 'bug' | 'idea'>('all');
+
+  // Learning Journal：分類（用於回顧時快速定位）
+  logCategories = signal<string[]>(['通用', '數學', '程式', '策略', '微結構', '面試', '專題', '復盤']);
+  currentLogCategory = signal<string>('通用');
+  categoryFilter = signal<string>('全部'); // 列表篩選用
+  newCategoryInput = signal<string>('');
+  journalSearch = signal<string>('');
+
+  // 可用分類：合併預設分類 + 既有筆記分類（避免舊資料漏掉）
+  availableCategories = computed(() => {
+    const set = new Set<string>(this.logCategories());
+    for (const l of this.learningLogs()) set.add((l as any).category || '通用');
+    return Array.from(set);
+  });
 
   // AI & Interview State
   tutorLoading = signal<boolean>(false);
@@ -181,10 +195,37 @@ export class AppComponent {
   constructor() {
     // Load persisted state
     this.completedTasks.set(new Set(JSON.parse(localStorage.getItem('quant_tasks') || '[]')));
+
+    // Load persisted categories (if any)
+    try {
+      const savedCats = localStorage.getItem('quant_log_categories');
+      if (savedCats) {
+        const arr = JSON.parse(savedCats);
+        if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) {
+          const uniq = Array.from(new Set(arr.map(s => s.trim()).filter(Boolean)));
+          if (uniq.length) this.logCategories.set(uniq);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse categories', e);
+    }
     
     try {
       const savedLogs = localStorage.getItem('quant_learning_logs');
-      if (savedLogs) this.learningLogs.set(JSON.parse(savedLogs));
+      if (savedLogs) {
+        const parsed = JSON.parse(savedLogs);
+        if (Array.isArray(parsed)) {
+          const normalized = parsed.map((l: any) => ({
+            id: typeof l?.id === 'string' ? l.id : crypto.randomUUID(),
+            dayId: typeof l?.dayId === 'string' ? l.dayId : '',
+            timestamp: typeof l?.timestamp === 'number' ? l.timestamp : Date.now(),
+            content: typeof l?.content === 'string' ? l.content : '',
+            type: (l?.type === 'theory' || l?.type === 'code' || l?.type === 'bug' || l?.type === 'idea') ? l.type : 'idea',
+            category: typeof l?.category === 'string' && l.category.trim() ? l.category.trim() : '通用'
+          })) as LogEntry[];
+          this.learningLogs.set(normalized);
+        }
+      }
     } catch (e) {
       console.warn('Failed to parse logs', e);
     }
@@ -196,6 +237,10 @@ export class AppComponent {
 
     effect(() => {
       localStorage.setItem('quant_learning_logs', JSON.stringify(this.learningLogs()));
+    });
+
+    effect(() => {
+      localStorage.setItem('quant_log_categories', JSON.stringify(this.logCategories()));
     });
 
     // Draw Chart
@@ -238,15 +283,57 @@ export class AppComponent {
   currentDaySchedule = computed(() => this.currentWeekSchedule()[this.selectedDayIndex()] || this.currentWeekSchedule()[0]);
   currentDayLogs = computed(() => {
     const dayId = this.currentDaySchedule()?.day_id;
-    return this.learningLogs().filter(l => l.dayId === dayId).sort((a, b) => b.timestamp - a.timestamp);
+    return this.learningLogs()
+      .filter(l => l.dayId === dayId)
+      .map(l => ({
+        ...l,
+        type: (l as any).type || 'idea',
+        category: (l as any).category || '通用'
+      }) as LogEntry)
+      .sort((a, b) => b.timestamp - a.timestamp);
   });
 
-  // 依照「顯示篩選」過濾當天筆記（避免全部混在一起）
+  // 依照「類型 / 分類 / 搜尋」過濾當天筆記
   filteredDayLogs = computed(() => {
-    const filter = this.journalFilter();
-    const logs = this.currentDayLogs();
-    if (filter === 'all') return logs;
-    return logs.filter(l => (l.type || 'idea') === filter);
+    const typeFilter = this.journalFilter();
+    const catFilter = this.categoryFilter();
+    const q = this.journalSearch().trim().toLowerCase();
+
+    return this.currentDayLogs().filter(l => {
+      if (typeFilter !== 'all' && (l.type || 'idea') !== typeFilter) return false;
+      if (catFilter !== '全部' && (l.category || '通用') !== catFilter) return false;
+      if (q) {
+        const hay = `${l.content || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  });
+
+  // 分組顯示：類別 -> logs（只有在「全部分類」時才分組；選定分類時維持單一清單）
+  groupedDayLogs = computed(() => {
+    const logs = this.filteredDayLogs();
+    const catFilter = this.categoryFilter();
+    if (catFilter !== '全部') return [{ category: catFilter, logs }];
+
+    const map = new Map<string, LogEntry[]>();
+    for (const l of logs) {
+      const c = l.category || '通用';
+      if (!map.has(c)) map.set(c, []);
+      map.get(c)!.push(l);
+    }
+    const order = this.availableCategories();
+    const groups = Array.from(map.entries())
+      .sort((a, b) => {
+        const ia = order.indexOf(a[0]);
+        const ib = order.indexOf(b[0]);
+        const ra = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
+        const rb = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
+        return ra - rb;
+      })
+      .map(([category, logs]) => ({ category, logs }));
+
+    return groups;
   });
 
   // --- Actions ---
@@ -274,6 +361,30 @@ export class AppComponent {
     this.journalFilter.set(filter);
   }
 
+  // Learning Journal：切換分類篩選
+  setCategoryFilter(category: string) {
+    this.categoryFilter.set(category);
+  }
+
+  // Learning Journal：新增分類（可用於自訂模組/主題）
+  addCategory() {
+    const raw = this.newCategoryInput().trim();
+    if (!raw) return;
+    const exists = new Set(this.availableCategories());
+    if (!exists.has(raw)) {
+      this.logCategories.update(arr => [...arr, raw]);
+    }
+    this.currentLogCategory.set(raw);
+    this.newCategoryInput.set('');
+  }
+
+  // Learning Journal：一鍵清除篩選
+  clearJournalFilters() {
+    this.journalFilter.set('all');
+    this.categoryFilter.set('全部');
+    this.journalSearch.set('');
+  }
+
   // 從 AM/PM/NT 區塊一鍵跳到 Learning Journal，並自動切到對應模組
   openJournalFor(type: 'theory' | 'code' | 'bug' | 'idea') {
     this.setLogType(type);
@@ -290,10 +401,11 @@ export class AppComponent {
     if (!content) return;
     this.learningLogs.update(logs => [{ 
       id: crypto.randomUUID(), 
-      dayId: this.currentDaySchedule()?.day_id, 
+      dayId: this.currentDaySchedule()?.day_id || '', 
       timestamp: Date.now(), 
       content,
-      type: this.currentLogType() // 儲存當前類型
+      type: this.currentLogType(), // 儲存當前類型
+      category: this.currentLogCategory() || '通用'
     }, ...logs]);
     this.currentLogInput.set('');
   }
