@@ -40,9 +40,6 @@
       }
     </nav>
 
-    <div class="p-4 border-t border-slate-800 bg-slate-950 text-xs text-center text-slate-600">
-      Powered by Google Gemini
-    </div>
   </aside>
 
   <main class="flex-1 flex flex-col h-screen overflow-hidden">
@@ -88,7 +85,8 @@
       </div>
     </header>
 
-    <div class="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-900">
+    <!-- 主內容改成 overflow-y-scroll + scrollbar-gutter: stable，避免捲軸出現/消失造成版面左右位移（Learning Journal 看起來像在跟著動） -->
+    <div class="flex-1 overflow-y-scroll p-6 lg:p-8 bg-slate-900" style="scrollbar-gutter: stable;">
       
       @if (activeTab() === 'roadmap') {
         <div class="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20">
@@ -235,7 +233,7 @@
               </div>
 
               <div class="lg:col-span-5">
-                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-120px)] min-h-0">
+                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-120px)] min-h-0">
 
                   <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
                     <span class="text-sm font-bold text-slate-200">
@@ -250,33 +248,67 @@
                       >
                         <i class="fas fa-magic mr-1"></i> ✨ 生成總結
                       </button>
-                      <span class="text-xs text-slate-500">{{ currentDayLogs().length }} entries</span>
+                      <span class="text-xs text-slate-500">{{ filteredDayLogs().length }} / {{ currentDayLogs().length }} entries</span>
                     </div>
                   </div>
 
                   <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0">
-                    <div class="flex space-x-2 mb-3">
-                      <button (click)="setLogType('theory')"
-                        [class.bg-yellow-500]="currentLogType() === 'theory'" [class.text-black]="currentLogType() === 'theory'" [class.opacity-50]="currentLogType() !== 'theory'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-yellow-500/30 text-yellow-500 transition-all hover:opacity-100">
-                        <i class="fas fa-book-open mr-1"></i> 理論推導
-                      </button>
-                      <button (click)="setLogType('code')"
-                        [class.bg-blue-500]="currentLogType() === 'code'" [class.text-black]="currentLogType() === 'code'" [class.opacity-50]="currentLogType() !== 'code'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-blue-500/30 text-blue-500 transition-all hover:opacity-100">
-                        <i class="fas fa-code mr-1"></i> 實作筆記
-                      </button>
-                      <button (click)="setLogType('bug')"
-                        [class.bg-rose-500]="currentLogType() === 'bug'" [class.text-black]="currentLogType() === 'bug'" [class.opacity-50]="currentLogType() !== 'bug'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-rose-500/30 text-rose-500 transition-all hover:opacity-100">
-                        <i class="fas fa-bug mr-1"></i> Debug
-                      </button>
-                      <button (click)="setLogType('idea')"
-                        [class.bg-emerald-500]="currentLogType() === 'idea'" [class.text-black]="currentLogType() === 'idea'" [class.opacity-50]="currentLogType() !== 'idea'"
-                        class="px-3 py-1 rounded text-xs font-bold border border-emerald-500/30 text-emerald-500 transition-all hover:opacity-100">
-                        <i class="fas fa-lightbulb mr-1"></i> 靈感/總結
-                      </button>
-                    </div>
+                    <div class="flex flex-col gap-3">
+                      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <!-- 新增筆記：類型（theory/code/bug/idea） -->
+                        <div class="flex flex-wrap gap-2">
+                          <button (click)="setLogType('theory')"
+                            [class.bg-yellow-500]="currentLogType() === 'theory'" [class.text-black]="currentLogType() === 'theory'" [class.opacity-50]="currentLogType() !== 'theory'"
+                            class="px-3 py-1 rounded text-xs font-bold border border-yellow-500/30 text-yellow-500 transition-all hover:opacity-100">
+                            <i class="fas fa-book-open mr-1"></i> 理論推導
+                          </button>
+                          <button (click)="setLogType('code')"
+                            [class.bg-blue-500]="currentLogType() === 'code'" [class.text-black]="currentLogType() === 'code'" [class.opacity-50]="currentLogType() !== 'code'"
+                            class="px-3 py-1 rounded text-xs font-bold border border-blue-500/30 text-blue-500 transition-all hover:opacity-100">
+                            <i class="fas fa-code mr-1"></i> 實作筆記
+                          </button>
+                          <button (click)="setLogType('bug')"
+                            [class.bg-rose-500]="currentLogType() === 'bug'" [class.text-black]="currentLogType() === 'bug'" [class.opacity-50]="currentLogType() !== 'bug'"
+                            class="px-3 py-1 rounded text-xs font-bold border border-rose-500/30 text-rose-500 transition-all hover:opacity-100">
+                            <i class="fas fa-bug mr-1"></i> Debug
+                          </button>
+                          <button (click)="setLogType('idea')"
+                            [class.bg-emerald-500]="currentLogType() === 'idea'" [class.text-black]="currentLogType() === 'idea'" [class.opacity-50]="currentLogType() !== 'idea'"
+                            class="px-3 py-1 rounded text-xs font-bold border border-emerald-500/30 text-emerald-500 transition-all hover:opacity-100">
+                            <i class="fas fa-lightbulb mr-1"></i> 靈感/總結
+                          </button>
+                        </div>
+
+                        <!-- 新增筆記：分類（可自訂） -->
+                        <div class="flex items-center gap-2">
+                          <span class="text-[11px] text-slate-500">分類</span>
+                          <select
+                            [ngModel]="currentLogCategory()"
+                            (ngModelChange)="currentLogCategory.set($event)"
+                            class="bg-slate-900 text-slate-200 text-xs rounded-md border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1"
+                            title="選擇這則筆記的分類"
+                          >
+                            @for (c of availableCategories(); track c) {
+                              <option [ngValue]="c">{{ c }}</option>
+                            }
+                          </select>
+
+                          <input
+                            [ngModel]="newCategoryInput()"
+                            (ngModelChange)="newCategoryInput.set($event)"
+                            (keydown.enter)="addCategory()"
+                            class="w-28 bg-slate-900 text-slate-200 text-xs rounded-md border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1 placeholder-slate-600"
+                            placeholder="新增分類"
+                          />
+                          <button
+                            (click)="addCategory()"
+                            class="px-2 py-1 text-xs rounded-md border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
+                            title="把輸入的分類加入清單"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
 
                     <textarea
                       [ngModel]="currentLogInput()"
@@ -295,22 +327,111 @@
                         <i class="fas fa-plus mr-1"></i> ADD ENTRY
                       </button>
                     </div>
+                    </div>
+                  </div>
+
+                  <!-- 筆記列表：分類/類型/搜尋篩選 -->
+                  <div class="px-4 py-3 bg-slate-950 border-b border-slate-800 flex-shrink-0 space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">分類</span>
+                      <button
+                        (click)="setCategoryFilter('全部')"
+                        class="px-2 py-1 rounded text-xs border transition-colors"
+                        [class.bg-slate-800]="categoryFilter() === '全部'"
+                        [class.text-white]="categoryFilter() === '全部'"
+                        [class.border-slate-700]="categoryFilter() === '全部'"
+                        [class.text-slate-400]="categoryFilter() !== '全部'"
+                        [class.border-slate-800]="categoryFilter() !== '全部'"
+                        [class.hover:bg-slate-900]="categoryFilter() !== '全部'"
+                      >
+                        全部
+                      </button>
+
+                      @for (c of availableCategories(); track c) {
+                        <button
+                          (click)="setCategoryFilter(c)"
+                          class="px-2 py-1 rounded text-xs border transition-colors"
+                          [class.bg-slate-800]="categoryFilter() === c"
+                          [class.text-white]="categoryFilter() === c"
+                          [class.border-slate-700]="categoryFilter() === c"
+                          [class.text-slate-400]="categoryFilter() !== c"
+                          [class.border-slate-800]="categoryFilter() !== c"
+                          [class.hover:bg-slate-900]="categoryFilter() !== c"
+                        >
+                          {{ c }}
+                        </button>
+                      }
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">類型</span>
+                      <button (click)="setJournalFilter('all')"
+                        class="px-2 py-1 rounded text-xs border transition-colors"
+                        [class.bg-slate-800]="journalFilter() === 'all'"
+                        [class.text-white]="journalFilter() === 'all'"
+                        [class.border-slate-700]="journalFilter() === 'all'"
+                        [class.text-slate-400]="journalFilter() !== 'all'"
+                        [class.border-slate-800]="journalFilter() !== 'all'"
+                        [class.hover:bg-slate-900]="journalFilter() !== 'all'"
+                      >全部</button>
+
+                      <button (click)="setJournalFilter('theory')" class="px-2 py-1 rounded text-xs border transition-colors"
+                        [class.bg-slate-800]="journalFilter() === 'theory'" [class.text-white]="journalFilter() === 'theory'" [class.border-slate-700]="journalFilter() === 'theory'"
+                        [class.text-slate-400]="journalFilter() !== 'theory'" [class.border-slate-800]="journalFilter() !== 'theory'" [class.hover:bg-slate-900]="journalFilter() !== 'theory'"
+                      >MATH</button>
+
+                      <button (click)="setJournalFilter('code')" class="px-2 py-1 rounded text-xs border transition-colors"
+                        [class.bg-slate-800]="journalFilter() === 'code'" [class.text-white]="journalFilter() === 'code'" [class.border-slate-700]="journalFilter() === 'code'"
+                        [class.text-slate-400]="journalFilter() !== 'code'" [class.border-slate-800]="journalFilter() !== 'code'" [class.hover:bg-slate-900]="journalFilter() !== 'code'"
+                      >CODE</button>
+
+                      <button (click)="setJournalFilter('bug')" class="px-2 py-1 rounded text-xs border transition-colors"
+                        [class.bg-slate-800]="journalFilter() === 'bug'" [class.text-white]="journalFilter() === 'bug'" [class.border-slate-700]="journalFilter() === 'bug'"
+                        [class.text-slate-400]="journalFilter() !== 'bug'" [class.border-slate-800]="journalFilter() !== 'bug'" [class.hover:bg-slate-900]="journalFilter() !== 'bug'"
+                      >FIX</button>
+
+                      <button (click)="setJournalFilter('idea')" class="px-2 py-1 rounded text-xs border transition-colors"
+                        [class.bg-slate-800]="journalFilter() === 'idea'" [class.text-white]="journalFilter() === 'idea'" [class.border-slate-700]="journalFilter() === 'idea'"
+                        [class.text-slate-400]="journalFilter() !== 'idea'" [class.border-slate-800]="journalFilter() !== 'idea'" [class.hover:bg-slate-900]="journalFilter() !== 'idea'"
+                      >NOTE</button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-search text-slate-500 text-xs"></i>
+                      <input
+                        [ngModel]="journalSearch()"
+                        (ngModelChange)="journalSearch.set($event)"
+                        class="flex-1 bg-slate-900 text-slate-200 text-xs rounded-md border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1 placeholder-slate-600"
+                        placeholder="搜尋這一天的筆記內容"
+                      />
+                      <button
+                        (click)="clearJournalFilters()"
+                        class="px-2 py-1 text-xs rounded-md border border-slate-800 text-slate-400 hover:bg-slate-900 transition-colors"
+                      >清除</button>
+                    </div>
                   </div>
 
                   <div class="flex-1 min-h-0 p-4 space-y-4 custom-scrollbar overflow-y-scroll"
                        style="scrollbar-gutter: stable;">
-                    @if (currentDayLogs().length === 0) {
+                    @if (filteredDayLogs().length === 0) {
                       <div class="text-center py-10 text-slate-600 italic text-sm">
-                        No logs yet for {{ currentDaySchedule()?.day_id }}. <br> Start tracking your progress!
+                        這一天還沒有符合條件的筆記。<br> 你可以先新增，或清除上方篩選。
                       </div>
                     }
 
-                    @for (log of currentDayLogs(); track log.id) {
-                      <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
-                           [class.border-yellow-500]="log.type === 'theory'"
-                           [class.border-blue-500]="log.type === 'code'"
-                           [class.border-rose-500]="log.type === 'bug'"
-                           [class.border-emerald-500]="log.type === 'idea' || !log.type">
+                    @for (group of groupedDayLogs(); track group.category) {
+                      @if (categoryFilter() === '全部') {
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 pt-2">
+                          {{ group.category }}
+                        </div>
+                      }
+
+                      @for (log of group.logs; track log.id) {
+                        <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
+                             [class.border-yellow-500]="log.type === 'theory'"
+                             [class.border-blue-500]="log.type === 'code'"
+                             [class.border-rose-500]="log.type === 'bug'"
+                             [class.border-emerald-500]="log.type === 'idea' || !log.type">
 
                         <div class="flex justify-between items-start mb-2">
                           <div class="flex items-center space-x-2">
@@ -318,6 +439,11 @@
                             @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
                             @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
                             @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
+
+                            <!-- 顯示分類（方便一眼辨識） -->
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                              {{ log.category || '通用' }}
+                            </span>
 
                             <span class="text-[10px] font-mono text-slate-500">
                               {{ log.timestamp | date:'yyyy-MM-dd HH:mm' }}
@@ -333,7 +459,8 @@
                         <div class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
                           <markdown [data]="log.content" katex clipboard></markdown>
                         </div>
-                      </div>
+                        </div>
+                      }
                     }
                   </div>
 
