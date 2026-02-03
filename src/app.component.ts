@@ -66,6 +66,10 @@ export class AppComponent {
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
 
+  // 筆電高度較小時：預設收合新增區/篩選區，讓「下面紀錄」有更大可視空間
+  journalComposerOpen = signal<boolean>(true);
+  showJournalFilters = signal<boolean>(false);
+
   // 可用分類：合併預設分類 + 既有筆記分類（避免舊資料漏掉）
   availableCategories = computed(() => {
     const set = new Set<string>(this.logCategories());
@@ -231,6 +235,13 @@ export class AppComponent {
       console.warn('Failed to parse logs', e);
     }
 
+    // 依螢幕高度做預設（筆電高度通常較小）
+    if (typeof window !== 'undefined') {
+      const h = window.innerHeight;
+      if (h < 820) this.journalComposerOpen.set(false);
+      if (h >= 900) this.showJournalFilters.set(true);
+    }
+
     // Persist effects
     effect(() => {
       localStorage.setItem('quant_tasks', JSON.stringify(Array.from(this.completedTasks())));
@@ -394,6 +405,15 @@ groupedDayLogs = computed(() => {
     this.journalFilter.set('all');
     this.categoryFilter.set('全部');
     this.journalSearch.set('');
+  }
+
+  // Journal UI：收合/展開（避免筆電高度太小時，下方紀錄被壓縮）
+  toggleJournalComposer() {
+    this.journalComposerOpen.set(!this.journalComposerOpen());
+  }
+
+  toggleJournalFilters() {
+    this.showJournalFilters.set(!this.showJournalFilters());
   }
 
 // 安全的 UUID（避免部分環境沒有 crypto.randomUUID）
