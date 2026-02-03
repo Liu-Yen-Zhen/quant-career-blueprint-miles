@@ -4,6 +4,7 @@ import { GeminiService } from './services/gemini.service';
 import { MarkdownModule, provideMarkdown } from 'ngx-markdown';
 import { FormsModule } from '@angular/forms';
 import * as d3 from 'd3';
+
 interface WeekData {
   id: number;
   title: string;
@@ -216,7 +217,7 @@ export class AppComponent {
         const parsed = JSON.parse(savedLogs);
         if (Array.isArray(parsed)) {
           const normalized = parsed.map((l: any) => ({
-            id: typeof l?.id === 'string' ? l.id : crypto.randomUUID(),
+            id: typeof l?.id === 'string' ? l.id : this.uuid(),
             dayId: typeof l?.dayId === 'string' ? l.dayId : '',
             timestamp: typeof l?.timestamp === 'number' ? l.timestamp : Date.now(),
             content: typeof l?.content === 'string' ? l.content : '',
@@ -294,49 +295,59 @@ export class AppComponent {
   });
 
   // 依照「類型 / 分類 / 搜尋」過濾當天筆記
-  filteredDayLogs = computed(() => {
-    const typeFilter = this.journalFilter();
-    const catFilter = this.categoryFilter();
-    const q = this.journalSearch().trim().toLowerCase();
+  
+// 依照「類型 / 類別 / 關鍵字」過濾當天筆記
+filteredDayLogs = computed(() => {
+  const typeFilter = this.journalFilter();         // all | theory | code | bug | idea
+  const catFilter = this.categoryFilter();         // 全部 | <category>
+  const q = this.journalSearch().trim().toLowerCase();
 
-    return this.currentDayLogs().filter(l => {
-      if (typeFilter !== 'all' && (l.type || 'idea') !== typeFilter) return false;
-      if (catFilter !== '全部' && (l.category || '通用') !== catFilter) return false;
-      if (q) {
-        const hay = `${l.content || ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  });
+  let logs = this.currentDayLogs();
 
-  // 分組顯示：類別 -> logs（只有在「全部分類」時才分組；選定分類時維持單一清單）
-  groupedDayLogs = computed(() => {
-    const logs = this.filteredDayLogs();
-    const catFilter = this.categoryFilter();
-    if (catFilter !== '全部') return [{ category: catFilter, logs }];
+  if (typeFilter !== 'all') {
+    logs = logs.filter(l => (l.type || 'idea') === typeFilter);
+  }
 
-    const map = new Map<string, LogEntry[]>();
-    for (const l of logs) {
-      const c = l.category || '通用';
-      if (!map.has(c)) map.set(c, []);
-      map.get(c)!.push(l);
-    }
-    const order = this.availableCategories();
-    const groups = Array.from(map.entries())
-      .sort((a, b) => {
-        const ia = order.indexOf(a[0]);
-        const ib = order.indexOf(b[0]);
-        const ra = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
-        const rb = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
-        return ra - rb;
-      })
-      .map(([category, logs]) => ({ category, logs }));
+  if (catFilter !== '全部') {
+    logs = logs.filter(l => (l.category || '通用') === catFilter);
+  }
 
-    return groups;
-  });
+  if (q) {
+    logs = logs.filter(l => `${l.content || ''}`.toLowerCase().includes(q));
+  }
 
-  // --- Actions ---
+  return logs;
+});
+
+// 分組顯示：類別 -> logs（選到特定類別時，會只剩一組）
+groupedDayLogs = computed(() => {
+  const logs = this.filteredDayLogs();
+  const catFilter = this.categoryFilter();
+  if (catFilter !== '全部') return [{ category: catFilter, logs }];
+
+  const map = new Map<string, LogEntry[]>();
+  for (const l of logs) {
+    const c = l.category || '通用';
+    if (!map.has(c)) map.set(c, []);
+    map.get(c)!.push(l);
+  }
+
+  // 依照「可用分類」的順序排列（預設分類在前、舊分類補在後）
+  const order = this.availableCategories();
+  const groups = Array.from(map.entries())
+    .sort((a, b) => {
+      const ia = order.indexOf(a[0]);
+      const ib = order.indexOf(b[0]);
+      const ra = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
+      const rb = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
+      return ra - rb;
+    })
+    .map(([category, logs]) => ({ category, logs }));
+
+  return groups;
+});
+
+// --- Actions ---
   selectWeek(id: number) { this.selectedWeekId.set(id); this.selectedDayIndex.set(0); this.resetAI(); }
   selectDay(index: number) { this.selectedDayIndex.set(index); }
   setTab(tab: 'roadmap' | 'interview' | 'project') { this.activeTab.set(tab); }
@@ -385,6 +396,14 @@ export class AppComponent {
     this.journalSearch.set('');
   }
 
+// 安全的 UUID（避免部分環境沒有 crypto.randomUUID）
+private uuid(): string {
+  const c: any = (globalThis as any).crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  return `id-${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
+}
+
+
   // 從 AM/PM/NT 區塊一鍵跳到 Learning Journal，並自動切到對應模組
   openJournalFor(type: 'theory' | 'code' | 'bug' | 'idea') {
     this.setLogType(type);
@@ -400,7 +419,7 @@ export class AppComponent {
     const content = this.currentLogInput().trim();
     if (!content) return;
     this.learningLogs.update(logs => [{ 
-      id: crypto.randomUUID(), 
+      id: this.uuid(), 
       dayId: this.currentDaySchedule()?.day_id || '', 
       timestamp: Date.now(), 
       content,
@@ -426,7 +445,7 @@ export class AppComponent {
     
     // 自動將總結也存成一條特殊的筆記
     this.learningLogs.update(prev => [{
-      id: crypto.randomUUID(),
+      id: this.uuid(),
       dayId: this.currentDaySchedule()?.day_id,
       timestamp: Date.now(),
       content: `## 🤖 AI Daily Recap\n${summary}`,
