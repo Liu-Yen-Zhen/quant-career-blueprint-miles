@@ -1,4 +1,24 @@
 <div class="min-h-screen bg-slate-900 text-slate-200 flex flex-col md:flex-row font-sans">
+
+  <style>
+/* 讓筆電(高度較小)也能完整可用：縮小 padding、讓 Journal 內部自己捲動、避免 scroll chaining */
+.main-scroll { overscroll-behavior: none; }
+.journal-card { overscroll-behavior: contain; }
+.journal-card::-webkit-scrollbar { width: 10px; }
+.journal-card::-webkit-scrollbar-thumb { background: rgba(148,163,184,.25); border-radius: 999px; }
+.journal-card::-webkit-scrollbar-track { background: rgba(15,23,42,.35); }
+@media (max-height: 820px) {
+  .main-pad { padding: 12px !important; }
+  .journal-header { padding-top: 10px !important; padding-bottom: 10px !important; }
+  .journal-composer { padding: 12px !important; }
+  .journal-textarea { height: 80px !important; }
+  .journal-card { height: calc(100dvh - 120px) !important; max-height: calc(100dvh - 120px) !important; top: 12px !important; }
+}
+@media (max-height: 740px) {
+  .journal-textarea { height: 68px !important; }
+}
+</style>
+
   
   <aside class="w-full md:w-64 bg-slate-950 border-r border-slate-800 flex-shrink-0 flex flex-col h-screen overflow-hidden sticky top-0">
     <div class="p-6 border-b border-slate-800 bg-slate-950 z-10">
@@ -86,7 +106,7 @@
     </header>
 
     <!-- 主內容改成 overflow-y-scroll + scrollbar-gutter: stable，避免捲軸出現/消失造成版面左右位移（Learning Journal 看起來像在跟著動） -->
-    <div class="flex-1 overflow-y-scroll p-6 lg:p-8 bg-slate-900" style="scrollbar-gutter: stable;">
+    <div class="flex-1 overflow-y-scroll bg-slate-900 main-scroll main-pad p-4 xl:p-8" style="scrollbar-gutter: stable;">
       
       @if (activeTab() === 'roadmap') {
         <div class="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20">
@@ -133,7 +153,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
               <div class="lg:col-span-4 space-y-4">
 
@@ -235,10 +255,12 @@
               
               <div class="lg:col-span-5">
 
-                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col sticky top-6 h-[calc(100vh-120px)] min-h-0">
+                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-4 self-start h-[calc(100dvh-140px)] max-h-[calc(100dvh-140px)] min-h-0 overflow-y-auto journal-card">
+
+                  <div class="sticky top-0 z-20 bg-slate-950">
 
 
-                  <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
+                  <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center journal-header">
 
                     <span class="text-sm font-bold text-slate-200">
 
@@ -272,12 +294,12 @@
 
                   <!-- 新增區（類型 + 分類 + 內容） -->
 
-                  <div class="p-4 bg-slate-950 border-b border-slate-800 flex-shrink-0 space-y-3">
+                  <div class="p-4 bg-slate-950 border-b border-slate-800 space-y-3 journal-composer">
 
 
                     <!-- 類型（寫筆記用） -->
 
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
 
                       <button (click)="setLogType('theory')"
 
@@ -327,7 +349,7 @@
 
                     <!-- 分類（寫筆記用） -->
 
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
 
                       <span class="text-[11px] text-slate-500 font-mono mr-1">分類</span>
 
@@ -402,7 +424,7 @@
 
                       (ngModelChange)="currentLogInput.set($event)"
 
-                      class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-28 placeholder-slate-600"
+                      class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-24 lg:h-28 placeholder-slate-600 journal-textarea"
 
                       placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
 
@@ -437,7 +459,7 @@
 
                       <!-- 顯示：類型 -->
 
-                      <div class="flex flex-wrap items-center gap-2">
+                      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
 
                         <span class="text-[11px] text-slate-500 font-mono mr-1">顯示</span>
 
@@ -509,7 +531,7 @@
 
                         <input
 
-                          class="ml-auto bg-slate-900 text-slate-200 text-xs rounded border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1 w-44"
+                          class="bg-slate-900 text-slate-200 text-xs rounded border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1 w-44 shrink-0"
 
                           placeholder="搜尋內容…"
 
@@ -524,7 +546,7 @@
 
                       <!-- 顯示：分類 -->
 
-                      <div class="flex flex-wrap gap-2">
+                      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
 
                         <button
 
@@ -568,11 +590,11 @@
                   </div>
 
 
-                  <!-- 列表（可捲動，卡片固定） -->
+                  </div>
 
-                  <div class="flex-1 min-h-0 p-4 space-y-5 custom-scrollbar overflow-y-scroll"
+                  <!-- 列表（Journal 卡片內捲動） -->
 
-                       style="scrollbar-gutter: stable;">
+                  <div class="p-4 space-y-5">
 
 
                     @if (filteredDayLogs().length === 0) {
