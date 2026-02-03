@@ -49,11 +49,7 @@ export class AppComponent {
   // --- State ---
   activeTab = signal<'roadmap' | 'interview' | 'project'>('roadmap');
   selectedWeekId = signal<number>(1);
-  // 以 day_id 做選擇，避免索引在不同螢幕/渲染下產生不一致
-  selectedDayId = signal<string>('');
-
-  // Sidebar（筆電 / 小螢幕用抽屜式）
-  sidebarOpen = signal<boolean>(false);
+  selectedDayIndex = signal<number>(0);
 
   // Completed Tasks & Logs (Persisted)
   completedTasks = signal<Set<string>>(new Set<string>());
@@ -69,6 +65,10 @@ export class AppComponent {
   categoryFilter = signal<string>('全部'); // 列表篩選用
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
+
+  // 筆電高度較小時：預設收合新增區/篩選區，讓「下面紀錄」有更大可視空間
+  journalComposerOpen = signal<boolean>(true);
+  showJournalFilters = signal<boolean>(false);
 
   // 可用分類：合併預設分類 + 既有筆記分類（避免舊資料漏掉）
   availableCategories = computed(() => {
@@ -198,7 +198,6 @@ export class AppComponent {
   };
 
   constructor() {
-    console.log("[LJ-v5] loaded");
     // Load persisted state
     this.completedTasks.set(new Set(JSON.parse(localStorage.getItem('quant_tasks') || '[]')));
 
@@ -236,15 +235,12 @@ export class AppComponent {
       console.warn('Failed to parse logs', e);
     }
 
-    // 初始化 / 修正 selectedDayId：避免切換週或重新整理後 day_id 不存在
-    effect(() => {
-      const days = this.currentWeekSchedule();
-      const cur = this.selectedDayId();
-      const has = !!cur && days.some(d => d.day_id === cur);
-      if (!has) {
-        this.selectedDayId.set(days[0]?.day_id || '');
-      }
-    });
+    // 依螢幕高度做預設（筆電高度通常較小）
+    if (typeof window !== 'undefined') {
+      const h = window.innerHeight;
+      if (h < 820) this.journalComposerOpen.set(false);
+      if (h >= 900) this.showJournalFilters.set(true);
+    }
 
     // Persist effects
     effect(() => {
@@ -296,11 +292,7 @@ export class AppComponent {
   currentWeekData = computed(() => this.weeksData.find(w => w.id === this.selectedWeekId()));
   currentPhaseData = computed(() => this.phases.find(p => p.id === this.currentWeekData()?.phaseId));
   currentWeekSchedule = computed(() => this.detailedSchedule[this.selectedWeekId()] || []);
-  currentDaySchedule = computed(() => {
-    const days = this.currentWeekSchedule();
-    const id = this.selectedDayId();
-    return days.find(d => d.day_id === id) || days[0];
-  });
+  currentDaySchedule = computed(() => this.currentWeekSchedule()[this.selectedDayIndex()] || this.currentWeekSchedule()[0]);
   currentDayLogs = computed(() => {
     const dayId = this.currentDaySchedule()?.day_id;
     return this.learningLogs()
@@ -367,22 +359,10 @@ groupedDayLogs = computed(() => {
 });
 
 // --- Actions ---
-  selectWeek(id: number) {
-    this.selectedWeekId.set(id);
-    const first = (this.detailedSchedule[id] || [])[0]?.day_id || '';
-    this.selectedDayId.set(first);
-    this.closeSidebar();
-    this.resetAI();
-  }
-  selectDay(dayId: string) {
-    this.selectedDayId.set(dayId);
-  }
+  selectWeek(id: number) { this.selectedWeekId.set(id); this.selectedDayIndex.set(0); this.resetAI(); }
+  selectDay(index: number) { this.selectedDayIndex.set(index); }
   setTab(tab: 'roadmap' | 'interview' | 'project') { this.activeTab.set(tab); }
   resetAI() { this.tutorResponse.set(''); this.tutorConcept.set(''); }
-
-  // Sidebar（筆電 / 小螢幕抽屜）
-  toggleSidebar() { this.sidebarOpen.update(v => !v); }
-  closeSidebar() { this.sidebarOpen.set(false); }
 
   toggleTask(task: string) {
     this.completedTasks.update(set => {
@@ -425,6 +405,15 @@ groupedDayLogs = computed(() => {
     this.journalFilter.set('all');
     this.categoryFilter.set('全部');
     this.journalSearch.set('');
+  }
+
+  // Journal UI：收合/展開（避免筆電高度太小時，下方紀錄被壓縮）
+  toggleJournalComposer() {
+    this.journalComposerOpen.set(!this.journalComposerOpen());
+  }
+
+  toggleJournalFilters() {
+    this.showJournalFilters.set(!this.showJournalFilters());
   }
 
 // 安全的 UUID（避免部分環境沒有 crypto.randomUUID）
