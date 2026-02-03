@@ -198,6 +198,7 @@ export class AppComponent {
   };
 
   constructor() {
+    console.log("[LJ-v5] loaded");
     // Load persisted state
     this.completedTasks.set(new Set(JSON.parse(localStorage.getItem('quant_tasks') || '[]')));
 
