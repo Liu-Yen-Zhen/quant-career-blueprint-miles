@@ -47,6 +47,7 @@ export class AppComponent {
   journalSection = viewChild<ElementRef>('journalSection');
 
   // --- State ---
+  sidebarOpen = signal<boolean>(false);  // 窄螢幕側邊欄開關
   activeTab = signal<'roadmap' | 'interview' | 'project'>('roadmap');
   selectedWeekId = signal<number>(1);
   selectedDayIndex = signal<number>(0);
