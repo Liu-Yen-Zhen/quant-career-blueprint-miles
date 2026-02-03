@@ -446,10 +446,11 @@ private uuid(): string {
     // 自動將總結也存成一條特殊的筆記
     this.learningLogs.update(prev => [{
       id: this.uuid(),
-      dayId: this.currentDaySchedule()?.day_id,
+      dayId: this.currentDaySchedule()?.day_id || '',
       timestamp: Date.now(),
       content: `## 🤖 AI Daily Recap\n${summary}`,
-      type: 'idea'
+      type: 'idea',
+      category: '總結'
     }, ...prev]);
   }
 
