@@ -7,6 +7,13 @@
 .journal-card::-webkit-scrollbar { width: 10px; }
 .journal-card::-webkit-scrollbar-thumb { background: rgba(148,163,184,.25); border-radius: 999px; }
 .journal-card::-webkit-scrollbar-track { background: rgba(15,23,42,.35); }
+/* Markdown 內圖片縮放，避免手機與窄版溢出 */
+markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: block;
+}
 @media (max-height: 820px) {
   .main-pad { padding: 12px !important; }
   .journal-header { padding-top: 10px !important; padding-bottom: 10px !important; }
@@ -199,19 +206,19 @@
                     <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.am.topic }}</div>
                     <ul class="space-y-2">
                       @for (task of day.am.tasks; track task) {
-                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(task)">
+                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(taskKey(day.day_id, 'am', task, $index), task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
-                             [class.bg-yellow-500]="isTaskCompleted(task)"
-                             [class.border-yellow-500]="isTaskCompleted(task)"
-                             [class.border-slate-700]="!isTaskCompleted(task)"
-                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(task)">
-                             @if (isTaskCompleted(task)) { <i class="fas fa-check text-black text-xs"></i> }
+                             [class.bg-yellow-500]="isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)"
+                             [class.border-yellow-500]="isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)"
+                             [class.border-slate-700]="!isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)"
+                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)">
+                             @if (isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)) { <i class="fas fa-check text-black text-xs"></i> }
                           </div>
                           <span class="text-sm transition-all"
-                                [class.opacity-50]="isTaskCompleted(task)"
-                                [class.line-through]="isTaskCompleted(task)"
-                                [class.text-slate-500]="isTaskCompleted(task)"
-                                [class.text-slate-300]="!isTaskCompleted(task)">{{ task }}</span>
+                                [class.opacity-50]="isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)"
+                                [class.line-through]="isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)"
+                                [class.text-slate-500]="isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)"
+                                [class.text-slate-300]="!isTaskCompleted(taskKey(day.day_id, 'am', task, $index), task)">{{ task }}</span>
                         </li>
                       }
                     </ul>
@@ -230,19 +237,19 @@
                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.pm.topic }}</div>
                     <ul class="space-y-2">
                       @for (task of day.pm.tasks; track task) {
-                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(task)">
+                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(taskKey(day.day_id, 'pm', task, $index), task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
-                             [class.bg-blue-500]="isTaskCompleted(task)"
-                             [class.border-blue-500]="isTaskCompleted(task)"
-                             [class.border-slate-700]="!isTaskCompleted(task)"
-                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(task)">
-                             @if (isTaskCompleted(task)) { <i class="fas fa-check text-black text-xs"></i> }
+                             [class.bg-blue-500]="isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)"
+                             [class.border-blue-500]="isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)"
+                             [class.border-slate-700]="!isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)"
+                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)">
+                             @if (isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)) { <i class="fas fa-check text-black text-xs"></i> }
                           </div>
                           <span class="text-sm transition-all"
-                                [class.opacity-50]="isTaskCompleted(task)"
-                                [class.line-through]="isTaskCompleted(task)"
-                                [class.text-slate-500]="isTaskCompleted(task)"
-                                [class.text-slate-300]="!isTaskCompleted(task)">{{ task }}</span>
+                                [class.opacity-50]="isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)"
+                                [class.line-through]="isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)"
+                                [class.text-slate-500]="isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)"
+                                [class.text-slate-300]="!isTaskCompleted(taskKey(day.day_id, 'pm', task, $index), task)">{{ task }}</span>
                         </li>
                       }
                     </ul>
@@ -261,19 +268,19 @@
                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.night.topic }}</div>
                     <ul class="space-y-2">
                       @for (task of day.night.tasks; track task) {
-                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(task)">
+                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(taskKey(day.day_id, 'night', task, $index), task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
-                             [class.bg-purple-500]="isTaskCompleted(task)"
-                             [class.border-purple-500]="isTaskCompleted(task)"
-                             [class.border-slate-700]="!isTaskCompleted(task)"
-                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(task)">
-                             @if (isTaskCompleted(task)) { <i class="fas fa-check text-black text-xs"></i> }
+                             [class.bg-purple-500]="isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)"
+                             [class.border-purple-500]="isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)"
+                             [class.border-slate-700]="!isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)"
+                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)">
+                             @if (isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)) { <i class="fas fa-check text-black text-xs"></i> }
                           </div>
                           <span class="text-sm transition-all"
-                                [class.opacity-50]="isTaskCompleted(task)"
-                                [class.line-through]="isTaskCompleted(task)"
-                                [class.text-slate-500]="isTaskCompleted(task)"
-                                [class.text-slate-300]="!isTaskCompleted(task)">{{ task }}</span>
+                                [class.opacity-50]="isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)"
+                                [class.line-through]="isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)"
+                                [class.text-slate-500]="isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)"
+                                [class.text-slate-300]="!isTaskCompleted(taskKey(day.day_id, 'night', task, $index), task)">{{ task }}</span>
                         </li>
                       }
                     </ul>
