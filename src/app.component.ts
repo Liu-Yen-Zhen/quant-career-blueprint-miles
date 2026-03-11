@@ -83,6 +83,7 @@ export class AppComponent {
   tutorLoading = signal<boolean>(false);
   tutorResponse = signal<string>('');
   tutorConcept = signal<string>('');
+  focusExplainDayId = signal<string>('');
   interviewQuestion = signal<string>('');
   interviewAnswer = signal<string>('');
   showAnswer = signal<boolean>(false);
@@ -400,17 +401,27 @@ groupedDayLogs = computed(() => {
     this.selectedWeekId.set(id);
     const first = (this.detailedSchedule[id] || [])[0]?.day_id || '';
     this.selectedDayId.set(first);
+    this.focusExplainDayId.set('');
     this.closeSidebar();
     this.resetAI();
   }
   selectDay(dayId: string) {
     this.selectedDayId.set(dayId);
+    if (this.focusExplainDayId() !== dayId) {
+      this.focusExplainDayId.set('');
+    }
   }
   setTab(tab: 'roadmap' | 'interview' | 'project') {
     this.activeTab.set(tab);
     this.closeSidebar();
   }
   resetAI() { this.tutorResponse.set(''); this.tutorConcept.set(''); }
+
+  async askQuantFocus(day: DailyTask) {
+    this.focusExplainDayId.set(day.day_id);
+    const prompt = `${day.title}\n${day.yushi_focus}`;
+    await this.askAiTutor(prompt);
+  }
 
   // Sidebar（筆電 / 小螢幕抽屜）
   toggleSidebar() { this.sidebarOpen.update(v => !v); }
