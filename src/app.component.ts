@@ -33,6 +33,8 @@ interface LogEntry {
   category: string; // 新增分類（用於日後回顧篩選/分組）
 }
 
+type TaskSlot = 'am' | 'pm' | 'night';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -49,7 +51,11 @@ export class AppComponent {
   // --- State ---
   activeTab = signal<'roadmap' | 'interview' | 'project'>('roadmap');
   selectedWeekId = signal<number>(1);
-  selectedDayIndex = signal<number>(0);
+  // 以 day_id 做選擇，避免索引在不同螢幕/渲染下產生不一致
+  selectedDayId = signal<string>('');
+
+  // Sidebar（筆電 / 小螢幕用抽屜式）
+  sidebarOpen = signal<boolean>(false);
 
   // Completed Tasks & Logs (Persisted)
   completedTasks = signal<Set<string>>(new Set<string>());
@@ -65,10 +71,6 @@ export class AppComponent {
   categoryFilter = signal<string>('全部'); // 列表篩選用
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
-
-  // 筆電高度較小時：預設收合新增區/篩選區，讓「下面紀錄」有更大可視空間
-  journalComposerOpen = signal<boolean>(true);
-  showJournalFilters = signal<boolean>(false);
 
   // 可用分類：合併預設分類 + 既有筆記分類（避免舊資料漏掉）
   availableCategories = computed(() => {
@@ -199,7 +201,7 @@ export class AppComponent {
 
   constructor() {
     // Load persisted state
-    this.completedTasks.set(new Set(JSON.parse(localStorage.getItem('quant_tasks') || '[]')));
+    this.completedTasks.set(this.loadCompletedTasks());
 
     // Load persisted categories (if any)
     try {
@@ -235,12 +237,15 @@ export class AppComponent {
       console.warn('Failed to parse logs', e);
     }
 
-    // 依螢幕高度做預設（筆電高度通常較小）
-    if (typeof window !== 'undefined') {
-      const h = window.innerHeight;
-      if (h < 820) this.journalComposerOpen.set(false);
-      if (h >= 900) this.showJournalFilters.set(true);
-    }
+    // 初始化 / 修正 selectedDayId：避免切換週或重新整理後 day_id 不存在
+    effect(() => {
+      const days = this.currentWeekSchedule();
+      const cur = this.selectedDayId();
+      const has = !!cur && days.some(d => d.day_id === cur);
+      if (!has) {
+        this.selectedDayId.set(days[0]?.day_id || '');
+      }
+    });
 
     // Persist effects
     effect(() => {
@@ -277,9 +282,16 @@ export class AppComponent {
     this.weeksData.forEach(week => {
       const weekTasks = this.detailedSchedule[week.id];
       if (!weekTasks) return;
-      const allTasks = weekTasks.flatMap(d => [...d.am.tasks, ...d.pm.tasks, ...d.night.tasks]);
-      if (allTasks.length === 0) return;
-      const ratio = allTasks.filter(t => completed.has(t)).length / allTasks.length;
+      const allTaskEntries = weekTasks.flatMap(d => [
+        ...d.am.tasks.map((task, index) => ({ key: this.taskKey(d.day_id, 'am', task, index), legacyTask: task })),
+        ...d.pm.tasks.map((task, index) => ({ key: this.taskKey(d.day_id, 'pm', task, index), legacyTask: task })),
+        ...d.night.tasks.map((task, index) => ({ key: this.taskKey(d.day_id, 'night', task, index), legacyTask: task }))
+      ]);
+      if (allTaskEntries.length === 0) return;
+      const doneCount = allTaskEntries.filter(({ key, legacyTask }) =>
+        this.isTaskDone(completed, key, legacyTask)
+      ).length;
+      const ratio = doneCount / allTaskEntries.length;
       Object.keys(week.skills).forEach(k => current[k] = (current[k] || 0) + (week.skills[k] * ratio));
     });
     const normalized: any = {};
@@ -289,10 +301,35 @@ export class AppComponent {
   });
 
   // --- Helpers ---
+  private loadCompletedTasks(): Set<string> {
+    try {
+      const raw = localStorage.getItem('quant_tasks');
+      if (!raw) return new Set<string>();
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new Set<string>();
+      return new Set(parsed.filter(x => typeof x === 'string' && x.trim().length > 0));
+    } catch (e) {
+      console.warn('Failed to parse completed tasks', e);
+      return new Set<string>();
+    }
+  }
+
+  private isTaskDone(completed: Set<string>, key: string, legacyTask?: string): boolean {
+    return completed.has(key) || (!!legacyTask && completed.has(legacyTask));
+  }
+
+  taskKey(dayId: string, slot: TaskSlot, task: string, taskIndex: number): string {
+    return `${dayId}::${slot}::${taskIndex}::${task}`;
+  }
+
   currentWeekData = computed(() => this.weeksData.find(w => w.id === this.selectedWeekId()));
   currentPhaseData = computed(() => this.phases.find(p => p.id === this.currentWeekData()?.phaseId));
   currentWeekSchedule = computed(() => this.detailedSchedule[this.selectedWeekId()] || []);
-  currentDaySchedule = computed(() => this.currentWeekSchedule()[this.selectedDayIndex()] || this.currentWeekSchedule()[0]);
+  currentDaySchedule = computed(() => {
+    const days = this.currentWeekSchedule();
+    const id = this.selectedDayId();
+    return days.find(d => d.day_id === id) || days[0];
+  });
   currentDayLogs = computed(() => {
     const dayId = this.currentDaySchedule()?.day_id;
     return this.learningLogs()
@@ -359,19 +396,42 @@ groupedDayLogs = computed(() => {
 });
 
 // --- Actions ---
-  selectWeek(id: number) { this.selectedWeekId.set(id); this.selectedDayIndex.set(0); this.resetAI(); }
-  selectDay(index: number) { this.selectedDayIndex.set(index); }
-  setTab(tab: 'roadmap' | 'interview' | 'project') { this.activeTab.set(tab); }
+  selectWeek(id: number) {
+    this.selectedWeekId.set(id);
+    const first = (this.detailedSchedule[id] || [])[0]?.day_id || '';
+    this.selectedDayId.set(first);
+    this.closeSidebar();
+    this.resetAI();
+  }
+  selectDay(dayId: string) {
+    this.selectedDayId.set(dayId);
+  }
+  setTab(tab: 'roadmap' | 'interview' | 'project') {
+    this.activeTab.set(tab);
+    this.closeSidebar();
+  }
   resetAI() { this.tutorResponse.set(''); this.tutorConcept.set(''); }
 
-  toggleTask(task: string) {
+  // Sidebar（筆電 / 小螢幕抽屜）
+  toggleSidebar() { this.sidebarOpen.update(v => !v); }
+  closeSidebar() { this.sidebarOpen.set(false); }
+
+  toggleTask(taskKey: string, legacyTask?: string) {
     this.completedTasks.update(set => {
       const newSet = new Set(set);
-      newSet.has(task) ? newSet.delete(task) : newSet.add(task);
+      const done = this.isTaskDone(newSet, taskKey, legacyTask);
+      if (done) {
+        newSet.delete(taskKey);
+        if (legacyTask) newSet.delete(legacyTask);
+      } else {
+        newSet.add(taskKey);
+      }
       return newSet;
     });
   }
-  isTaskCompleted(task: string) { return this.completedTasks().has(task); }
+  isTaskCompleted(taskKey: string, legacyTask?: string) {
+    return this.isTaskDone(this.completedTasks(), taskKey, legacyTask);
+  }
 
   // 新增：切換筆記類型
   setLogType(type: 'theory' | 'code' | 'bug' | 'idea') {
@@ -405,15 +465,6 @@ groupedDayLogs = computed(() => {
     this.journalFilter.set('all');
     this.categoryFilter.set('全部');
     this.journalSearch.set('');
-  }
-
-  // Journal UI：收合/展開（避免筆電高度太小時，下方紀錄被壓縮）
-  toggleJournalComposer() {
-    this.journalComposerOpen.set(!this.journalComposerOpen());
-  }
-
-  toggleJournalFilters() {
-    this.showJournalFilters.set(!this.showJournalFilters());
   }
 
 // 安全的 UUID（避免部分環境沒有 crypto.randomUUID）
@@ -458,20 +509,23 @@ private uuid(): string {
     this.tutorLoading.set(true);
     this.tutorConcept.set('每日學習總結');
     this.tutorResponse.set(''); // 清空舊內容
-    
-    const summary = await this.geminiService.summarizeDailyLogs(logs, title);
-    this.tutorResponse.set(summary);
-    this.tutorLoading.set(false);
-    
-    // 自動將總結也存成一條特殊的筆記
-    this.learningLogs.update(prev => [{
-      id: this.uuid(),
-      dayId: this.currentDaySchedule()?.day_id || '',
-      timestamp: Date.now(),
-      content: `## 🤖 AI Daily Recap\n${summary}`,
-      type: 'idea',
-      category: '總結'
-    }, ...prev]);
+
+    try {
+      const summary = await this.geminiService.summarizeDailyLogs(logs, title);
+      this.tutorResponse.set(summary);
+
+      // 自動將總結也存成一條特殊的筆記
+      this.learningLogs.update(prev => [{
+        id: this.uuid(),
+        dayId: this.currentDaySchedule()?.day_id || '',
+        timestamp: Date.now(),
+        content: `## 🤖 AI Daily Recap\n${summary}`,
+        type: 'idea',
+        category: '總結'
+      }, ...prev]);
+    } finally {
+      this.tutorLoading.set(false);
+    }
   }
 
   // --- D3 ---
@@ -576,16 +630,27 @@ private uuid(): string {
 
   // --- AI Wrappers ---
   async askAiTutor(concept: string) {
-    this.tutorLoading.set(true); this.tutorConcept.set(concept); this.tutorResponse.set('');
-    this.tutorResponse.set(await this.geminiService.explainConcept(concept, this.currentWeekData()?.summary || ''));
-    this.tutorLoading.set(false);
+    this.tutorLoading.set(true);
+    this.tutorConcept.set(concept);
+    this.tutorResponse.set('');
+    try {
+      this.tutorResponse.set(await this.geminiService.explainConcept(concept, this.currentWeekData()?.summary || ''));
+    } finally {
+      this.tutorLoading.set(false);
+    }
   }
 
   async generateQuestion() {
-    this.interviewLoading.set(true); this.showAnswer.set(false); this.interviewQuestion.set('');
-    const res = await this.geminiService.generateInterviewQuestion();
-    this.interviewQuestion.set(res.question); this.interviewAnswer.set(res.answer);
-    this.interviewLoading.set(false);
+    this.interviewLoading.set(true);
+    this.showAnswer.set(false);
+    this.interviewQuestion.set('');
+    try {
+      const res = await this.geminiService.generateInterviewQuestion();
+      this.interviewQuestion.set(res.question);
+      this.interviewAnswer.set(res.answer);
+    } finally {
+      this.interviewLoading.set(false);
+    }
   }
   toggleAnswer() { this.showAnswer.update(v => !v); }
 }
