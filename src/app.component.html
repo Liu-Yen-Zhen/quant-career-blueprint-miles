@@ -205,21 +205,24 @@ markdown img {
                   <div class="p-4">
                     <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.am.topic }}</div>
                     <ul class="space-y-2">
-                      @for (task of day.am.tasks; track day.day_id + '-am-' + $index; let taskIndex = $index) {
-                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(taskKey(day.day_id, 'am', task, taskIndex), task)">
+                      @for (task of (day.am.tasks || []); track $index) {
+                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(day.day_id + '::am::' + $index + '::' + task, task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
-                             [class.bg-yellow-500]="isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)"
-                             [class.border-yellow-500]="isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)"
-                             [class.border-slate-700]="!isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)"
-                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)">
-                             @if (isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)) { <i class="fas fa-check text-black text-xs"></i> }
+                             [class.bg-yellow-500]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
+                             [class.border-yellow-500]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
+                             [class.border-slate-700]="!isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
+                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)">
+                             @if (isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)) { <i class="fas fa-check text-black text-xs"></i> }
                           </div>
                           <span class="text-sm transition-all"
-                                [class.opacity-50]="isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)"
-                                [class.line-through]="isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)"
-                                [class.text-slate-500]="isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)"
-                                [class.text-slate-300]="!isTaskCompleted(taskKey(day.day_id, 'am', task, taskIndex), task)">{{ task }}</span>
+                                [class.opacity-50]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
+                                [class.line-through]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
+                                [class.text-slate-500]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
+                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)">{{ task }}</span>
                         </li>
+                      }
+                      @if ((day.am.tasks?.length || 0) === 0) {
+                        <li class="text-sm text-slate-500 italic">目前沒有任務資料</li>
                       }
                     </ul>
                   </div>
@@ -236,21 +239,24 @@ markdown img {
                   <div class="p-4">
                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.pm.topic }}</div>
                     <ul class="space-y-2">
-                      @for (task of day.pm.tasks; track day.day_id + '-pm-' + $index; let taskIndex = $index) {
-                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(taskKey(day.day_id, 'pm', task, taskIndex), task)">
+                      @for (task of (day.pm.tasks || []); track $index) {
+                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(day.day_id + '::pm::' + $index + '::' + task, task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
-                             [class.bg-blue-500]="isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)"
-                             [class.border-blue-500]="isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)"
-                             [class.border-slate-700]="!isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)"
-                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)">
-                             @if (isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)) { <i class="fas fa-check text-black text-xs"></i> }
+                             [class.bg-blue-500]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
+                             [class.border-blue-500]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
+                             [class.border-slate-700]="!isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
+                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)">
+                             @if (isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)) { <i class="fas fa-check text-black text-xs"></i> }
                           </div>
                           <span class="text-sm transition-all"
-                                [class.opacity-50]="isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)"
-                                [class.line-through]="isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)"
-                                [class.text-slate-500]="isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)"
-                                [class.text-slate-300]="!isTaskCompleted(taskKey(day.day_id, 'pm', task, taskIndex), task)">{{ task }}</span>
+                                [class.opacity-50]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
+                                [class.line-through]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
+                                [class.text-slate-500]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
+                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)">{{ task }}</span>
                         </li>
+                      }
+                      @if ((day.pm.tasks?.length || 0) === 0) {
+                        <li class="text-sm text-slate-500 italic">目前沒有任務資料</li>
                       }
                     </ul>
                   </div>
@@ -267,21 +273,24 @@ markdown img {
                   <div class="p-4">
                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.night.topic }}</div>
                     <ul class="space-y-2">
-                      @for (task of day.night.tasks; track day.day_id + '-night-' + $index; let taskIndex = $index) {
-                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(taskKey(day.day_id, 'night', task, taskIndex), task)">
+                      @for (task of (day.night.tasks || []); track $index) {
+                        <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(day.day_id + '::night::' + $index + '::' + task, task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
-                             [class.bg-purple-500]="isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)"
-                             [class.border-purple-500]="isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)"
-                             [class.border-slate-700]="!isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)"
-                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)">
-                             @if (isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)) { <i class="fas fa-check text-black text-xs"></i> }
+                             [class.bg-purple-500]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
+                             [class.border-purple-500]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
+                             [class.border-slate-700]="!isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
+                             [class.group-hover/item:border-slate-500]="!isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)">
+                             @if (isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)) { <i class="fas fa-check text-black text-xs"></i> }
                           </div>
                           <span class="text-sm transition-all"
-                                [class.opacity-50]="isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)"
-                                [class.line-through]="isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)"
-                                [class.text-slate-500]="isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)"
-                                [class.text-slate-300]="!isTaskCompleted(taskKey(day.day_id, 'night', task, taskIndex), task)">{{ task }}</span>
+                                [class.opacity-50]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
+                                [class.line-through]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
+                                [class.text-slate-500]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
+                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)">{{ task }}</span>
                         </li>
+                      }
+                      @if ((day.night.tasks?.length || 0) === 0) {
+                        <li class="text-sm text-slate-500 italic">目前沒有任務資料</li>
                       }
                     </ul>
                   </div>
