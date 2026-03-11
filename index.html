@@ -31,32 +31,59 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
 
-    <!-- 讓整個畫面只要有變動，就自動套用 KaTeX + Prism -->
+    <!-- 套用 KaTeX + Prism（加上節流，避免 DOM 監聽回圈造成卡頓） -->
     <script>
+      const milesMathDelimiters = [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ];
+      let milesMathObserver = null;
+      let milesMathScheduled = false;
+
       function applyMathAndHighlight() {
+        const targets = Array.from(document.querySelectorAll('markdown'));
+        const mathTargets = targets.length ? targets : [document.body];
+
         if (window.renderMathInElement) {
-          window.renderMathInElement(document.body, {
-            delimiters: [
-              { left: '$$', right: '$$', display: true },
-              { left: '$', right: '$', display: false },
-            ],
-            throwOnError: false,
+          mathTargets.forEach((el) => {
+            window.renderMathInElement(el, {
+              delimiters: milesMathDelimiters,
+              throwOnError: false
+            });
           });
         }
+
         if (window.Prism) {
-          window.Prism.highlightAll();
+          document.querySelectorAll('pre code').forEach((block) => {
+            window.Prism.highlightElement(block);
+          });
         }
       }
 
-      document.addEventListener('DOMContentLoaded', () => {
-        // 一開始先跑一次
-        applyMathAndHighlight();
-
-        // 監聽畫面變化（Angular 重新 render、你改筆記都會觸發）
-        const observer = new MutationObserver(() => {
-          applyMathAndHighlight();
+      function scheduleMathAndHighlight() {
+        if (milesMathScheduled) return;
+        milesMathScheduled = true;
+        requestAnimationFrame(() => {
+          milesMathScheduled = false;
+          if (milesMathObserver) milesMathObserver.disconnect();
+          try {
+            applyMathAndHighlight();
+          } finally {
+            if (milesMathObserver && document.body) {
+              milesMathObserver.observe(document.body, { childList: true, subtree: true });
+            }
+          }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        scheduleMathAndHighlight();
+        milesMathObserver = new MutationObserver(() => {
+          scheduleMathAndHighlight();
+        });
+        if (document.body) {
+          milesMathObserver.observe(document.body, { childList: true, subtree: true });
+        }
       });
     </script>
 
@@ -110,6 +137,7 @@
     <script>
       // 共用一個 Pyodide 載入 Promise，避免重複載入
       window.__miles_pyodide_promise = null;
+      let milesBindScheduled = false;
 
       async function milesLoadPyodide() {
         if (!window.__miles_pyodide_promise) {
@@ -149,11 +177,22 @@
         });
       }
 
+      function scheduleBindPythonPad() {
+        if (milesBindScheduled) return;
+        milesBindScheduled = true;
+        requestAnimationFrame(() => {
+          milesBindScheduled = false;
+          milesBindPythonPad();
+        });
+      }
+
       // 頁面載完 + 之後 Angular 重新 render 時，都試著綁一次
       document.addEventListener('DOMContentLoaded', () => {
-        milesBindPythonPad();
-        const observer = new MutationObserver(milesBindPythonPad);
-        observer.observe(document.body, { childList: true, subtree: true });
+        scheduleBindPythonPad();
+        const observer = new MutationObserver(scheduleBindPythonPad);
+        if (document.body) {
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
       });
     </script>
 
