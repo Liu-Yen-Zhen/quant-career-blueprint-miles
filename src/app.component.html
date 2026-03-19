@@ -21,11 +21,11 @@ markdown img {
   .main-pad { padding: 12px !important; }
   .journal-header { padding-top: 10px !important; padding-bottom: 10px !important; }
   .journal-composer { padding: 12px !important; }
-  .journal-textarea { height: 80px !important; }
+  .journal-textarea { min-height: 80px !important; }
   .journal-card { height: calc(100dvh - 96px) !important; max-height: calc(100dvh - 96px) !important; top: 10px !important; }
 }
 @media (max-height: 740px) {
-  .journal-textarea { height: 68px !important; }
+  .journal-textarea { min-height: 68px !important; }
 }
 </style>
 
@@ -329,7 +329,7 @@ markdown img {
               
               <div class="lg:col-span-5">
 
-                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-3 self-start">
+                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-3 self-start h-[calc(100dvh-96px)] max-h-[calc(100dvh-96px)] min-h-0 overflow-hidden">
 
                   <div class="sticky top-0 z-20 bg-slate-950">
 
@@ -350,7 +350,7 @@ markdown img {
 
                   <!-- 新增區（類型 + 分類 + 內容） -->
 
-                  <div class="p-4 bg-slate-950 border-b border-slate-800 space-y-3 journal-composer">
+                  <div class="p-4 bg-slate-950 border-b border-slate-800 journal-composer h-full min-h-0 flex flex-col gap-3">
 
 
                     <!-- 類型（寫筆記用） -->
@@ -466,7 +466,7 @@ markdown img {
 
                       (ngModelChange)="currentLogInput.set($event)"
 
-                      class="w-full bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none h-24 lg:h-28 placeholder-slate-600 journal-textarea"
+                      class="w-full flex-1 min-h-[220px] lg:min-h-[300px] bg-slate-900 text-slate-300 p-3 text-sm rounded-lg border border-slate-800 focus:outline-none focus:border-emerald-500/50 transition-colors resize-none placeholder-slate-600 journal-textarea"
 
                       placeholder="支援 Markdown, LaTeX ($E=mc^2$) 與 Code Blocks (```)..."
 
