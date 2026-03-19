@@ -501,6 +501,17 @@ markdown img {
                     ></textarea>
 
 
+                    <div class="flex items-center justify-between gap-3">
+                      <span class="text-[11px] text-slate-500 font-mono">時間（可選）</span>
+                      <input
+                        type="datetime-local"
+                        class="bg-slate-900 text-slate-200 text-xs rounded border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1"
+                        [ngModel]="currentLogTimestamp()"
+                        (ngModelChange)="currentLogTimestamp.set($event)"
+                      />
+                    </div>
+
+
                     <div class="flex justify-end">
 
                       <button

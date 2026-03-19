@@ -61,6 +61,7 @@ export class AppComponent {
   completedTasks = signal<Set<string>>(new Set<string>());
   learningLogs = signal<LogEntry[]>([]);
   currentLogInput = signal<string>('');
+  currentLogTimestamp = signal<string>('');
   currentLogType = signal<'theory' | 'code' | 'bug' | 'idea'>('idea'); // 新增當前筆記類型
   // Learning Journal 顯示篩選（解決筆記全部混在一起）
   journalFilter = signal<'all' | 'theory' | 'code' | 'bug' | 'idea'>('all');
@@ -496,6 +497,13 @@ private uuid(): string {
     });
   }
 
+  private resolveLogTimestamp(): number {
+    const raw = this.currentLogTimestamp().trim();
+    if (!raw) return Date.now();
+    const parsed = new Date(raw).getTime();
+    return Number.isFinite(parsed) ? parsed : Date.now();
+  }
+
   // 修改：儲存時加入 type
   addLog() {
     const content = this.currentLogInput().trim();
@@ -503,12 +511,13 @@ private uuid(): string {
     this.learningLogs.update(logs => [{ 
       id: this.uuid(), 
       dayId: this.currentDaySchedule()?.day_id || '', 
-      timestamp: Date.now(), 
+      timestamp: this.resolveLogTimestamp(),
       content,
       type: this.currentLogType(), // 儲存當前類型
       category: this.currentLogCategory() || '通用'
     }, ...logs]);
     this.currentLogInput.set('');
+    this.currentLogTimestamp.set('');
   }
   deleteLog(id: string) { this.learningLogs.update(logs => logs.filter(l => l.id !== id)); }
 
