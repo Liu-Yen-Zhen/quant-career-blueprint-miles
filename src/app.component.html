@@ -1,8 +1,11 @@
 <div class="min-h-screen bg-slate-900 text-slate-200 flex flex-col 2xl:flex-row font-sans">
 
   <style>
-/* 讓筆電(高度較小)也能完整可用：縮小 padding、讓 Journal 內部自己捲動、避免 scroll chaining */
-.main-scroll { overscroll-behavior: none; }
+/* 讓筆電(高度較小)也能完整可用：縮小 padding、讓 Journal 內部自己捲動 */
+.main-scroll {
+  overscroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .journal-card { overscroll-behavior: contain; }
 .journal-card::-webkit-scrollbar { width: 10px; }
 .journal-card::-webkit-scrollbar-thumb { background: rgba(148,163,184,.25); border-radius: 999px; }
@@ -19,7 +22,7 @@ markdown img {
   .journal-header { padding-top: 10px !important; padding-bottom: 10px !important; }
   .journal-composer { padding: 12px !important; }
   .journal-textarea { height: 80px !important; }
-  .journal-card { height: calc(100dvh - 120px) !important; max-height: calc(100dvh - 120px) !important; top: 12px !important; }
+  .journal-card { height: calc(100dvh - 96px) !important; max-height: calc(100dvh - 96px) !important; top: 10px !important; }
 }
 @media (max-height: 740px) {
   .journal-textarea { height: 68px !important; }
@@ -89,7 +92,7 @@ markdown img {
 
   </aside>
 
-  <main class="flex-1 flex flex-col h-screen overflow-hidden">
+  <main class="flex-1 flex flex-col h-screen min-h-0 overflow-hidden">
     
     <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
       <div class="flex items-center space-x-4">
@@ -142,8 +145,8 @@ markdown img {
       </div>
     </header>
 
-    <!-- 主內容改成 overflow-y-scroll + scrollbar-gutter: stable，避免捲軸出現/消失造成版面左右位移（Learning Journal 看起來像在跟著動） -->
-    <div class="flex-1 overflow-y-scroll bg-slate-900 main-scroll main-pad p-4 xl:p-8" style="scrollbar-gutter: stable;">
+    <!-- 主內容使用 overflow-y-auto，避免部分裝置滑輪事件被鎖住 -->
+    <div class="flex-1 min-h-0 overflow-y-auto bg-slate-900 main-scroll main-pad p-4 xl:p-8" style="scrollbar-gutter: stable;">
       
       @if (activeTab() === 'roadmap') {
         <div class="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20">
@@ -214,7 +217,7 @@ markdown img {
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-              <div class="lg:col-span-4 space-y-4">
+              <div class="lg:col-span-3 space-y-4">
 
                 <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-700 transition-colors">
                   <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
@@ -321,9 +324,9 @@ markdown img {
               </div>
 
               
-              <div class="lg:col-span-5">
+              <div class="lg:col-span-7">
 
-                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-4 self-start h-[calc(100dvh-140px)] max-h-[calc(100dvh-140px)] min-h-0 overflow-y-auto journal-card">
+                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-3 self-start h-[calc(100dvh-96px)] max-h-[calc(100dvh-96px)] min-h-0 overflow-y-auto journal-card">
 
                   <div class="sticky top-0 z-20 bg-slate-950">
 
@@ -779,41 +782,7 @@ markdown img {
 
               </div>
 
-              <div class="lg:col-span-3 space-y-6">
-
-                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
-                  <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-                    <span class="text-sm font-bold text-slate-200">
-                      <i class="fas fa-terminal text-cyan-400 mr-2"></i>PYTHON SCRATCH PAD
-                    </span>
-                    <span class="text-[10px] text-slate-500 font-mono">(Pyodide / 部分套件不可用)</span>
-                  </div>
-
-                  <div class="p-4 space-y-3">
-                    <textarea
-                      id="miles-python-code"
-                      class="w-full min-h-[160px] bg-slate-900 text-slate-200 text-xs font-mono rounded border border-slate-800 focus:outline-none focus:border-cyan-500/50 p-3"
-                      placeholder="在這裡貼 Python（例如：for i in range(3): print(i)）"
-                    >for i in range(3):
-    print(i)</textarea>
-
-                    <div class="flex items-center justify-between">
-                      <button
-                        id="miles-python-run"
-                        class="px-4 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors"
-                      >
-                        Run Python
-                      </button>
-                      <span id="miles-python-status" class="text-[11px] text-slate-500"></span>
-                    </div>
-
-                    <pre
-                      id="miles-python-output"
-                      class="w-full min-h-[120px] bg-black/80 text-emerald-300 text-xs font-mono rounded border border-slate-800 p-3 whitespace-pre-wrap"
-                    >(輸出結果會顯示在這裡)</pre>
-                  </div>
-                </div>
-
+              <div class="lg:col-span-2 space-y-6">
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center">
                   <div class="w-full flex justify-between items-start mb-4">
                     <h3 class="text-lg font-bold text-slate-200 tracking-wide">能力成長模型</h3>
