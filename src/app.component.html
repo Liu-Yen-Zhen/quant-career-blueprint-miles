@@ -217,7 +217,7 @@ markdown img {
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-              <div class="lg:col-span-3 space-y-4">
+              <div class="lg:col-span-4 space-y-4">
 
                 <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-700 transition-colors">
                   <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex justify-between items-center">
@@ -321,12 +321,34 @@ markdown img {
                   </div>
                 </div>
 
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center">
+                  <div class="w-full flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-bold text-slate-200 tracking-wide">能力成長模型</h3>
+                    <span class="text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">TOTAL PROFICIENCY</span>
+                  </div>
+                  
+                  <div class="w-full flex-1 flex items-center justify-center">
+                    <div #radarChart class="w-full max-w-[320px] aspect-square flex items-center justify-center"></div>
+                  </div>
+                  
+                  <div class="grid grid-cols-2 gap-4 w-full mt-4 pt-4 border-t border-slate-800">
+                    <div class="text-center">
+                      <div class="text-[10px] text-slate-500 uppercase">Math Proficiency</div>
+                      <div class="text-xl font-mono font-bold text-slate-200">{{ currentEarnedSkills()['Math'] | number:'1.0-0' }}%</div>
+                    </div>
+                    <div class="text-center">
+                      <div class="text-[10px] text-slate-500 uppercase">Coding Ability</div>
+                      <div class="text-xl font-mono font-bold text-slate-200">{{ currentEarnedSkills()['Coding'] | number:'1.0-0' }}%</div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
               
-              <div class="lg:col-span-7">
+              <div class="lg:col-span-4">
 
-                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-3 self-start h-[calc(100dvh-96px)] max-h-[calc(100dvh-96px)] min-h-0 overflow-y-auto journal-card">
+                <div #journalSection class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-3 self-start">
 
                   <div class="sticky top-0 z-20 bg-slate-950">
 
@@ -340,25 +362,7 @@ markdown img {
                     </span>
 
 
-                    <div class="flex items-center space-x-3">
-
-                      <button
-
-                        (click)="generateDailySummary()"
-
-                        class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium border border-cyan-500/30 px-2 py-1 rounded hover:bg-cyan-500/10"
-
-                        title="Generate Daily Recap with AI"
-
-                      >
-
-                        <i class="fas fa-magic mr-1"></i> ✨ 生成總結
-
-                      </button>
-
-                      <span class="text-xs text-slate-500">{{ filteredDayLogs().length }} / {{ currentDayLogs().length }} entries</span>
-
-                    </div>
+                    <span class="text-xs text-slate-500">中間欄：新增紀錄</span>
 
                   </div>
 
@@ -472,20 +476,6 @@ markdown img {
                       </button>
 
 
-                      <button
-
-                        (click)="clearJournalFilters()"
-
-                        class="ml-auto text-xs text-slate-500 hover:text-slate-300 transition-colors"
-
-                        title="清除篩選"
-
-                      >
-
-                        清除篩選
-
-                      </button>
-
                     </div>
 
 
@@ -534,277 +524,159 @@ markdown img {
                     </div>
 
 
-                    <!-- 檢視篩選（顯示用） -->
-
-                    <div class="pt-2 border-t border-slate-800 space-y-2">
-
-
-                      <!-- 顯示：類型 -->
-
-                      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-
-                        <span class="text-[11px] text-slate-500 font-mono mr-1">顯示</span>
-
-
-                        <button (click)="setJournalFilter('all')"
-
-                          class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 transition-all"
-
-                          [class.bg-slate-800]="journalFilter() === 'all'" [class.text-white]="journalFilter() === 'all'"
-
-                          [class.text-slate-400]="journalFilter() !== 'all'" [class.hover:bg-slate-900]="journalFilter() !== 'all'">
-
-                          全部
-
-                        </button>
-
-
-                        <button (click)="setJournalFilter('theory')"
-
-                          class="px-2 py-1 rounded text-[11px] font-bold border border-yellow-500/30 text-yellow-500 transition-all"
-
-                          [class.bg-yellow-500]="journalFilter() === 'theory'" [class.text-black]="journalFilter() === 'theory'"
-
-                          [class.opacity-50]="journalFilter() !== 'theory'" [class.hover:opacity-100]="journalFilter() !== 'theory'">
-
-                          理論
-
-                        </button>
-
-
-                        <button (click)="setJournalFilter('code')"
-
-                          class="px-2 py-1 rounded text-[11px] font-bold border border-blue-500/30 text-blue-500 transition-all"
-
-                          [class.bg-blue-500]="journalFilter() === 'code'" [class.text-black]="journalFilter() === 'code'"
-
-                          [class.opacity-50]="journalFilter() !== 'code'" [class.hover:opacity-100]="journalFilter() !== 'code'">
-
-                          程式
-
-                        </button>
-
-
-                        <button (click)="setJournalFilter('bug')"
-
-                          class="px-2 py-1 rounded text-[11px] font-bold border border-rose-500/30 text-rose-500 transition-all"
-
-                          [class.bg-rose-500]="journalFilter() === 'bug'" [class.text-black]="journalFilter() === 'bug'"
-
-                          [class.opacity-50]="journalFilter() !== 'bug'" [class.hover:opacity-100]="journalFilter() !== 'bug'">
-
-                          Debug
-
-                        </button>
-
-
-                        <button (click)="setJournalFilter('idea')"
-
-                          class="px-2 py-1 rounded text-[11px] font-bold border border-emerald-500/30 text-emerald-500 transition-all"
-
-                          [class.bg-emerald-500]="journalFilter() === 'idea'" [class.text-black]="journalFilter() === 'idea'"
-
-                          [class.opacity-50]="journalFilter() !== 'idea'" [class.hover:opacity-100]="journalFilter() !== 'idea'">
-
-                          總結
-
-                        </button>
-
-
-                        <input
-
-                          class="bg-slate-900 text-slate-200 text-xs rounded border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1 w-44 shrink-0"
-
-                          placeholder="搜尋內容…"
-
-                          [ngModel]="journalSearch()"
-
-                          (ngModelChange)="journalSearch.set($event)"
-
-                        />
-
-                      </div>
-
-
-                      <!-- 顯示：分類 -->
-
-                      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-
-                        <button
-
-                          (click)="setCategoryFilter('全部')"
-
-                          class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 transition-all"
-
-                          [class.bg-slate-800]="categoryFilter() === '全部'" [class.text-white]="categoryFilter() === '全部'"
-
-                          [class.text-slate-400]="categoryFilter() !== '全部'" [class.hover:bg-slate-900]="categoryFilter() !== '全部'">
-
-                          全部分類
-
-                        </button>
-
-
-                        @for (c of availableCategories(); track c) {
-
-                          <button
-
-                            (click)="setCategoryFilter(c)"
-
-                            class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 transition-all"
-
-                            [class.bg-slate-800]="categoryFilter() === c" [class.text-white]="categoryFilter() === c"
-
-                            [class.text-slate-400]="categoryFilter() !== c" [class.hover:bg-slate-900]="categoryFilter() !== c">
-
-                            {{ c }}
-
-                          </button>
-
-                        }
-
-                      </div>
-
-
-                    </div>
-
-
+                    <div class="text-[11px] text-slate-500 font-mono">可按 Ctrl+Enter 快速新增</div>
                   </div>
-
-
                   </div>
-
-                  <!-- 列表（Journal 卡片內捲動） -->
-
-                  <div class="p-4 space-y-5">
-
-
-                    @if (filteredDayLogs().length === 0) {
-
-                      <div class="text-center py-10 text-slate-600 italic text-sm">
-
-                        目前沒有符合篩選條件的筆記。<br> 你可以先清除篩選，或新增一條紀錄。
-
-                      </div>
-
-                    }
-
-
-                    @for (group of groupedDayLogs(); track group.category) {
-
-                      <div class="space-y-3">
-
-                        <div class="flex items-center justify-between">
-
-                          <div class="text-xs font-bold text-slate-300">
-
-                            <i class="fas fa-folder-open text-slate-500 mr-2"></i>{{ group.category }}
-
-                          </div>
-
-                          <div class="text-[11px] text-slate-500 font-mono">{{ group.logs.length }} entries</div>
-
-                        </div>
-
-
-                        @for (log of group.logs; track log.id) {
-
-                          <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
-
-                               [class.border-yellow-500]="log.type === 'theory'"
-
-                               [class.border-blue-500]="log.type === 'code'"
-
-                               [class.border-rose-500]="log.type === 'bug'"
-
-                               [class.border-emerald-500]="log.type === 'idea' || !log.type">
-
-
-                            <div class="flex justify-between items-start mb-2">
-
-                              <div class="flex items-center flex-wrap gap-2">
-
-                                @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span> }
-
-                                @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
-
-                                @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
-
-                                @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
-
-
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-
-                                  {{ log.category || '通用' }}
-
-                                </span>
-
-
-                                <span class="text-[10px] font-mono text-slate-500">
-
-                                  {{ log.timestamp | date:'yyyy-MM-dd HH:mm' }}
-
-                                </span>
-
-                              </div>
-
-
-                              <button (click)="deleteLog(log.id)"
-
-                                      class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity px-2">
-
-                                <i class="fas fa-trash-alt text-xs"></i>
-
-                              </button>
-
-                            </div>
-
-
-                            <div class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-
-                              <markdown [data]="log.content" katex clipboard></markdown>
-
-                            </div>
-
-                          </div>
-
-                        }
-
-                      </div>
-
-                    }
-
-
-                  </div>
-
-
                 </div>
-
               </div>
 
-              <div class="lg:col-span-2 space-y-6">
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center">
-                  <div class="w-full flex justify-between items-start mb-4">
-                    <h3 class="text-lg font-bold text-slate-200 tracking-wide">能力成長模型</h3>
-                    <span class="text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">TOTAL PROFICIENCY</span>
-                  </div>
-                  
-                  <div class="w-full flex-1 flex items-center justify-center">
-                    <div #radarChart class="w-full max-w-[320px] aspect-square flex items-center justify-center"></div>
-                  </div>
-                  
-                  <div class="grid grid-cols-2 gap-4 w-full mt-4 pt-4 border-t border-slate-800">
-                    <div class="text-center">
-                      <div class="text-[10px] text-slate-500 uppercase">Math Proficiency</div>
-                      <div class="text-xl font-mono font-bold text-slate-200">{{ currentEarnedSkills()['Math'] | number:'1.0-0' }}%</div>
+              <div class="lg:col-span-4">
+                <div class="bg-slate-950 border border-slate-800 rounded-xl flex flex-col sticky top-3 self-start h-[calc(100dvh-96px)] max-h-[calc(100dvh-96px)] min-h-0 overflow-y-auto journal-card">
+                  <div class="sticky top-0 z-20 bg-slate-950">
+                    <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center journal-header">
+                      <span class="text-sm font-bold text-slate-200">
+                        <i class="fas fa-folder-open text-cyan-400 mr-2"></i>紀錄結果
+                      </span>
+                      <div class="flex items-center space-x-3">
+                        <button
+                          (click)="generateDailySummary()"
+                          class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium border border-cyan-500/30 px-2 py-1 rounded hover:bg-cyan-500/10"
+                          title="Generate Daily Recap with AI"
+                        >
+                          <i class="fas fa-magic mr-1"></i> ✨ 生成總結
+                        </button>
+                        <span class="text-xs text-slate-500">{{ filteredDayLogs().length }} / {{ currentDayLogs().length }} entries</span>
+                      </div>
                     </div>
-                    <div class="text-center">
-                      <div class="text-[10px] text-slate-500 uppercase">Coding Ability</div>
-                      <div class="text-xl font-mono font-bold text-slate-200">{{ currentEarnedSkills()['Coding'] | number:'1.0-0' }}%</div>
+
+                    <div class="p-4 bg-slate-950 border-b border-slate-800 space-y-2">
+                      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <span class="text-[11px] text-slate-500 font-mono mr-1">顯示</span>
+
+                        <button (click)="setJournalFilter('all')"
+                          class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 transition-all"
+                          [class.bg-slate-800]="journalFilter() === 'all'" [class.text-white]="journalFilter() === 'all'"
+                          [class.text-slate-400]="journalFilter() !== 'all'" [class.hover:bg-slate-900]="journalFilter() !== 'all'">
+                          全部
+                        </button>
+
+                        <button (click)="setJournalFilter('theory')"
+                          class="px-2 py-1 rounded text-[11px] font-bold border border-yellow-500/30 text-yellow-500 transition-all"
+                          [class.bg-yellow-500]="journalFilter() === 'theory'" [class.text-black]="journalFilter() === 'theory'"
+                          [class.opacity-50]="journalFilter() !== 'theory'" [class.hover:opacity-100]="journalFilter() !== 'theory'">
+                          理論
+                        </button>
+
+                        <button (click)="setJournalFilter('code')"
+                          class="px-2 py-1 rounded text-[11px] font-bold border border-blue-500/30 text-blue-500 transition-all"
+                          [class.bg-blue-500]="journalFilter() === 'code'" [class.text-black]="journalFilter() === 'code'"
+                          [class.opacity-50]="journalFilter() !== 'code'" [class.hover:opacity-100]="journalFilter() !== 'code'">
+                          程式
+                        </button>
+
+                        <button (click)="setJournalFilter('bug')"
+                          class="px-2 py-1 rounded text-[11px] font-bold border border-rose-500/30 text-rose-500 transition-all"
+                          [class.bg-rose-500]="journalFilter() === 'bug'" [class.text-black]="journalFilter() === 'bug'"
+                          [class.opacity-50]="journalFilter() !== 'bug'" [class.hover:opacity-100]="journalFilter() !== 'bug'">
+                          Debug
+                        </button>
+
+                        <button (click)="setJournalFilter('idea')"
+                          class="px-2 py-1 rounded text-[11px] font-bold border border-emerald-500/30 text-emerald-500 transition-all"
+                          [class.bg-emerald-500]="journalFilter() === 'idea'" [class.text-black]="journalFilter() === 'idea'"
+                          [class.opacity-50]="journalFilter() !== 'idea'" [class.hover:opacity-100]="journalFilter() !== 'idea'">
+                          總結
+                        </button>
+
+                        <input
+                          class="bg-slate-900 text-slate-200 text-xs rounded border border-slate-800 focus:outline-none focus:border-emerald-500/50 px-2 py-1 w-44 shrink-0"
+                          placeholder="搜尋內容…"
+                          [ngModel]="journalSearch()"
+                          (ngModelChange)="journalSearch.set($event)"
+                        />
+
+                        <button
+                          (click)="clearJournalFilters()"
+                          class="text-xs px-2 py-1 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors shrink-0"
+                          title="清除篩選"
+                        >
+                          清除
+                        </button>
+                      </div>
+
+                      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <button
+                          (click)="setCategoryFilter('全部')"
+                          class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 transition-all"
+                          [class.bg-slate-800]="categoryFilter() === '全部'" [class.text-white]="categoryFilter() === '全部'"
+                          [class.text-slate-400]="categoryFilter() !== '全部'" [class.hover:bg-slate-900]="categoryFilter() !== '全部'">
+                          全部分類
+                        </button>
+
+                        @for (c of availableCategories(); track c) {
+                          <button
+                            (click)="setCategoryFilter(c)"
+                            class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 transition-all"
+                            [class.bg-slate-800]="categoryFilter() === c" [class.text-white]="categoryFilter() === c"
+                            [class.text-slate-400]="categoryFilter() !== c" [class.hover:bg-slate-900]="categoryFilter() !== c">
+                            {{ c }}
+                          </button>
+                        }
+                      </div>
                     </div>
+                  </div>
+
+                  <div class="p-4 space-y-5">
+                    @if (filteredDayLogs().length === 0) {
+                      <div class="text-center py-10 text-slate-600 italic text-sm">
+                        目前沒有符合篩選條件的筆記。<br> 你可以先清除篩選，或新增一條紀錄。
+                      </div>
+                    }
+
+                    @for (group of groupedDayLogs(); track group.category) {
+                      <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                          <div class="text-xs font-bold text-slate-300">
+                            <i class="fas fa-folder-open text-slate-500 mr-2"></i>{{ group.category }}
+                          </div>
+                          <div class="text-[11px] text-slate-500 font-mono">{{ group.logs.length }} entries</div>
+                        </div>
+
+                        @for (log of group.logs; track log.id) {
+                          <div class="group relative pl-4 border-l-2 transition-colors p-3 rounded-r-lg bg-slate-900/30 hover:bg-slate-900/50"
+                               [class.border-yellow-500]="log.type === 'theory'"
+                               [class.border-blue-500]="log.type === 'code'"
+                               [class.border-rose-500]="log.type === 'bug'"
+                               [class.border-emerald-500]="log.type === 'idea' || !log.type">
+                            <div class="flex justify-between items-start mb-2">
+                              <div class="flex items-center flex-wrap gap-2">
+                                @if (log.type === 'theory') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-500">MATH</span> }
+                                @if (log.type === 'code') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">CODE</span> }
+                                @if (log.type === 'bug') { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500">FIX</span> }
+                                @if (log.type === 'idea' || !log.type) { <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500">NOTE</span> }
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                  {{ log.category || '通用' }}
+                                </span>
+                                <span class="text-[10px] font-mono text-slate-500">
+                                  {{ log.timestamp | date:'yyyy-MM-dd HH:mm' }}
+                                </span>
+                              </div>
+
+                              <button (click)="deleteLog(log.id)"
+                                      class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity px-2">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                              </button>
+                            </div>
+
+                            <div class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                              <markdown [data]="log.content" katex clipboard></markdown>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
                   </div>
                 </div>
-
               </div>
 
             </div>
