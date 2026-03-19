@@ -67,16 +67,33 @@ export class AppComponent {
   journalFilter = signal<'all' | 'theory' | 'code' | 'bug' | 'idea'>('all');
 
   // Learning Journal：分類（用於回顧時快速定位）
-  logCategories = signal<string[]>(['通用', '數學', '程式', '策略', '微結構', '面試', '專題', '復盤']);
+  logCategories = signal<string[]>(['通用']);
   currentLogCategory = signal<string>('通用');
   categoryFilter = signal<string>('全部'); // 列表篩選用
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
 
+  managedCategories = computed(() => {
+    const uniq = Array.from(new Set(this.logCategories().map(c => c.trim()).filter(Boolean)));
+    if (!uniq.includes('通用')) uniq.unshift('通用');
+    return uniq;
+  });
+
   // 可用分類：合併預設分類 + 既有筆記分類（避免舊資料漏掉）
   availableCategories = computed(() => {
     const set = new Set<string>(this.logCategories());
     for (const l of this.learningLogs()) set.add((l as any).category || '通用');
+    return Array.from(set);
+  });
+
+  todaySuggestedCategories = computed(() => {
+    const day = this.currentDaySchedule();
+    if (!day) return [] as string[];
+    const set = new Set<string>();
+    [day.am?.topic, day.pm?.topic, day.night?.topic].forEach(topic => {
+      const normalized = this.normalizeCategoryName(topic || '');
+      if (normalized) set.add(normalized);
+    });
     return Array.from(set);
   });
 
@@ -211,7 +228,8 @@ export class AppComponent {
       if (savedCats) {
         const arr = JSON.parse(savedCats);
         if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) {
-          const uniq = Array.from(new Set(arr.map(s => s.trim()).filter(Boolean)));
+          const uniq = Array.from(new Set(arr.map(s => this.normalizeCategoryName(s)).filter(Boolean)));
+          if (!uniq.includes('通用')) uniq.unshift('通用');
           if (uniq.length) this.logCategories.set(uniq);
         }
       }
@@ -464,12 +482,53 @@ groupedDayLogs = computed(() => {
   addCategory() {
     const raw = this.newCategoryInput().trim();
     if (!raw) return;
-    const exists = new Set(this.availableCategories());
-    if (!exists.has(raw)) {
-      this.logCategories.update(arr => [...arr, raw]);
-    }
-    this.currentLogCategory.set(raw);
+    const normalized = this.normalizeCategoryName(raw);
+    if (!normalized) return;
+    this.addCategoryByName(normalized);
+    this.currentLogCategory.set(normalized);
     this.newCategoryInput.set('');
+  }
+
+  removeCategory(category: string) {
+    const normalized = this.normalizeCategoryName(category);
+    if (!normalized || normalized === '通用') return;
+    this.logCategories.update(arr => {
+      const next = arr.filter(c => this.normalizeCategoryName(c) !== normalized);
+      return next.includes('通用') ? next : ['通用', ...next];
+    });
+    if (this.currentLogCategory() === normalized) {
+      this.currentLogCategory.set('通用');
+    }
+    if (this.categoryFilter() === normalized) {
+      this.categoryFilter.set('全部');
+    }
+  }
+
+  addTodayTopicsAsCategories() {
+    const topics = this.todaySuggestedCategories();
+    if (!topics.length) return;
+    topics.forEach(topic => this.addCategoryByName(topic));
+    if (topics[0]) this.currentLogCategory.set(topics[0]);
+  }
+
+  private addCategoryByName(category: string) {
+    const normalized = this.normalizeCategoryName(category);
+    if (!normalized) return;
+    this.logCategories.update(arr => {
+      const map = new Map<string, string>();
+      arr.forEach(c => {
+        const key = this.normalizeCategoryName(c);
+        if (key) map.set(key, c);
+      });
+      if (!map.has(normalized)) map.set(normalized, normalized);
+      const next = Array.from(map.values()).map(c => this.normalizeCategoryName(c)).filter(Boolean);
+      if (!next.includes('通用')) next.unshift('通用');
+      return next;
+    });
+  }
+
+  private normalizeCategoryName(raw: string): string {
+    return raw.replace(/\s+/g, ' ').trim();
   }
 
   // Learning Journal：一鍵清除篩選

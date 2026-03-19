@@ -420,7 +420,7 @@ markdown img {
 
                       >
 
-                        @for (c of availableCategories(); track c) {
+                        @for (c of managedCategories(); track c) {
 
                           <option [value]="c">{{ c }}</option>
 
@@ -456,6 +456,22 @@ markdown img {
 
                       </button>
 
+                      <button
+                        (click)="addTodayTopicsAsCategories()"
+                        class="text-xs px-3 py-1 rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 transition-colors shrink-0"
+                        title="將今日 AM / PM / NT 單元加入分類"
+                      >
+                        匯入今日單元
+                      </button>
+
+                      <button
+                        (click)="removeCategory(currentLogCategory())"
+                        [disabled]="currentLogCategory() === '通用'"
+                        class="text-xs px-3 py-1 rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                        title="刪除目前分類（通用不可刪）"
+                      >
+                        刪除目前分類
+                      </button>
 
                     </div>
 
