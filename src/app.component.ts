@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, effect, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { GeminiService } from './services/gemini.service';
 import { MarkdownModule, provideMarkdown } from 'ngx-markdown';
 import { FormsModule } from '@angular/forms';
@@ -45,8 +46,10 @@ type TaskSlot = 'am' | 'pm' | 'night';
 })
 export class AppComponent {
   private geminiService = inject(GeminiService);
+  private sanitizer = inject(DomSanitizer);
   radarChartContainer = viewChild<ElementRef>('radarChart');
   journalSection = viewChild<ElementRef>('journalSection');
+  private mathHtmlCache = new Map<string, SafeHtml>();
 
   // --- State ---
   activeTab = signal<'roadmap' | 'interview' | 'project'>('roadmap');
@@ -340,6 +343,51 @@ export class AppComponent {
 
   taskKey(dayId: string, slot: TaskSlot, task: string, taskIndex: number): string {
     return `${dayId}::${slot}::${taskIndex}::${task}`;
+  }
+
+  renderMathText(text: string): SafeHtml {
+    const source = typeof text === 'string' ? text : '';
+    const cached = this.mathHtmlCache.get(source);
+    if (cached) return cached;
+
+    const regex = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+    let result = '';
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(source)) !== null) {
+      result += this.escapeHtml(source.slice(lastIndex, match.index));
+
+      const expression = (match[1] ?? match[2] ?? '').trim();
+      const displayMode = typeof match[1] === 'string';
+      result += this.katexToHtml(expression, displayMode, match[0]);
+
+      lastIndex = regex.lastIndex;
+    }
+
+    result += this.escapeHtml(source.slice(lastIndex));
+    const safe = this.sanitizer.bypassSecurityTrustHtml(result);
+    this.mathHtmlCache.set(source, safe);
+    return safe;
+  }
+
+  private katexToHtml(expression: string, displayMode: boolean, fallback: string): string {
+    const katexLib = (globalThis as any)?.katex;
+    if (!katexLib?.renderToString || !expression) return this.escapeHtml(fallback);
+    try {
+      return katexLib.renderToString(expression, { throwOnError: false, displayMode });
+    } catch {
+      return this.escapeHtml(fallback);
+    }
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   currentWeekData = computed(() => this.weeksData.find(w => w.id === this.selectedWeekId()));
