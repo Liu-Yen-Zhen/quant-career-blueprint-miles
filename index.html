@@ -42,10 +42,10 @@
 
       function applyMathAndHighlight() {
         const targets = Array.from(document.querySelectorAll('markdown'));
+        const mathTargets = targets.length ? targets : [document.body];
 
-        // 只處理 markdown 區塊，避免改寫 Angular 綁定節點造成內容卡住不更新
-        if (window.renderMathInElement && targets.length) {
-          targets.forEach((el) => {
+        if (window.renderMathInElement) {
+          mathTargets.forEach((el) => {
             window.renderMathInElement(el, {
               delimiters: milesMathDelimiters,
               throwOnError: false
