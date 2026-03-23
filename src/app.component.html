@@ -189,7 +189,7 @@ markdown img {
                  <i class="fas fa-lightbulb text-yellow-500 mt-1 mr-3"></i>
                  <div>
                    <span class="text-xs font-bold text-yellow-500 uppercase tracking-wider">Quant Focus</span>
-                   <p class="text-sm text-slate-300 mt-1" [innerHTML]="renderMathText(day.yushi_focus)"></p>
+                   <p class="text-sm text-slate-300 mt-1">{{ day.yushi_focus }}</p>
                  </div>
                 </div>
                 <button
@@ -231,7 +231,7 @@ markdown img {
                   <div class="p-4">
                     <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.am.topic }}</div>
                     <ul class="space-y-2">
-                      @for (task of (day.am.tasks || []); track day.day_id + '::am::' + $index + '::' + task) {
+                      @for (task of (day.am.tasks || []); track $index) {
                         <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(day.day_id + '::am::' + $index + '::' + task, task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
                              [class.bg-yellow-500]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
@@ -244,8 +244,7 @@ markdown img {
                                 [class.opacity-50]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
                                 [class.line-through]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
                                 [class.text-slate-500]="isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
-                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)"
-                                [innerHTML]="renderMathText(task)"></span>
+                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::am::' + $index + '::' + task, task)">{{ task }}</span>
                         </li>
                       }
                       @if ((day.am.tasks?.length || 0) === 0) {
@@ -266,7 +265,7 @@ markdown img {
                   <div class="p-4">
                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.pm.topic }}</div>
                     <ul class="space-y-2">
-                      @for (task of (day.pm.tasks || []); track day.day_id + '::pm::' + $index + '::' + task) {
+                      @for (task of (day.pm.tasks || []); track $index) {
                         <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(day.day_id + '::pm::' + $index + '::' + task, task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
                              [class.bg-blue-500]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
@@ -279,8 +278,7 @@ markdown img {
                                 [class.opacity-50]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
                                 [class.line-through]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
                                 [class.text-slate-500]="isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
-                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)"
-                                [innerHTML]="renderMathText(task)"></span>
+                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::pm::' + $index + '::' + task, task)">{{ task }}</span>
                         </li>
                       }
                       @if ((day.pm.tasks?.length || 0) === 0) {
@@ -301,7 +299,7 @@ markdown img {
                   <div class="p-4">
                      <div class="text-sm text-slate-300 font-medium mb-3 sm:hidden">{{ day.night.topic }}</div>
                     <ul class="space-y-2">
-                      @for (task of (day.night.tasks || []); track day.day_id + '::night::' + $index + '::' + task) {
+                      @for (task of (day.night.tasks || []); track $index) {
                         <li class="flex items-start cursor-pointer group/item" (click)="toggleTask(day.day_id + '::night::' + $index + '::' + task, task)">
                           <div class="w-5 h-5 border rounded mr-3 flex items-center justify-center flex-shrink-0 transition-colors mt-0.5"
                              [class.bg-purple-500]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
@@ -314,8 +312,7 @@ markdown img {
                                 [class.opacity-50]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
                                 [class.line-through]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
                                 [class.text-slate-500]="isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
-                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)"
-                                [innerHTML]="renderMathText(task)"></span>
+                                [class.text-slate-300]="!isTaskCompleted(day.day_id + '::night::' + $index + '::' + task, task)">{{ task }}</span>
                         </li>
                       }
                       @if ((day.night.tasks?.length || 0) === 0) {
