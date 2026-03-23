@@ -611,13 +611,25 @@ markdown img {
                         </button>
 
                         @for (c of availableCategories(); track c) {
-                          <button
-                            (click)="setCategoryFilter(c)"
-                            class="px-2 py-1 rounded text-[11px] font-bold border border-slate-700 transition-all"
-                            [class.bg-slate-800]="categoryFilter() === c" [class.text-white]="categoryFilter() === c"
-                            [class.text-slate-400]="categoryFilter() !== c" [class.hover:bg-slate-900]="categoryFilter() !== c">
-                            {{ c }}
-                          </button>
+                          <div class="inline-flex items-center rounded border border-slate-700 overflow-hidden shrink-0">
+                            <button
+                              (click)="setCategoryFilter(c)"
+                              class="px-2 py-1 text-[11px] font-bold transition-all"
+                              [class.bg-slate-800]="categoryFilter() === c" [class.text-white]="categoryFilter() === c"
+                              [class.text-slate-400]="categoryFilter() !== c" [class.hover:bg-slate-900]="categoryFilter() !== c">
+                              {{ c }}
+                            </button>
+                            @if (c !== '通用') {
+                              <button
+                                type="button"
+                                (click)="removeCategory(c); $event.stopPropagation()"
+                                class="px-1.5 py-1 text-[11px] text-rose-300 hover:bg-rose-500/10 border-l border-slate-700 transition-colors"
+                                title="刪除此分類（筆記會改為通用）"
+                              >
+                                ×
+                              </button>
+                            }
+                          </div>
                         }
                       </div>
                     </div>

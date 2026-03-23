@@ -492,10 +492,19 @@ groupedDayLogs = computed(() => {
   removeCategory(category: string) {
     const normalized = this.normalizeCategoryName(category);
     if (!normalized || normalized === '通用') return;
+
     this.logCategories.update(arr => {
       const next = arr.filter(c => this.normalizeCategoryName(c) !== normalized);
       return next.includes('通用') ? next : ['通用', ...next];
     });
+
+    // 把已存在筆記中的該分類回填為「通用」，避免分類籤在列表又被舊資料帶回來
+    this.learningLogs.update(logs => logs.map(l => {
+      const c = this.normalizeCategoryName((l as any).category || '通用');
+      if (c !== normalized) return l;
+      return { ...l, category: '通用' };
+    }));
+
     if (this.currentLogCategory() === normalized) {
       this.currentLogCategory.set('通用');
     }
