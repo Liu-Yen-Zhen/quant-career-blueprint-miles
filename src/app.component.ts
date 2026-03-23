@@ -67,23 +67,31 @@ export class AppComponent {
   journalFilter = signal<'all' | 'theory' | 'code' | 'bug' | 'idea'>('all');
 
   // Learning Journal：分類（用於回顧時快速定位）
-  logCategories = signal<string[]>(['通用']);
+  logCategoriesByDay = signal<Record<string, string[]>>({});
   currentLogCategory = signal<string>('通用');
   categoryFilter = signal<string>('全部'); // 列表篩選用
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
 
   managedCategories = computed(() => {
-    const uniq = Array.from(new Set(this.logCategories().map(c => c.trim()).filter(Boolean)));
-    if (!uniq.includes('通用')) uniq.unshift('通用');
-    return uniq;
+    const dayId = this.currentDayId();
+    if (!dayId) return ['通用'];
+    const byDay = this.logCategoriesByDay()[dayId] || [];
+    const merged = byDay.length > 0 ? byDay : this.inferCategoriesFromLogs(dayId);
+    return this.normalizeCategoryList(merged);
   });
 
-  // 可用分類：合併預設分類 + 既有筆記分類（避免舊資料漏掉）
+  // 可用分類（當天）：合併「當天管理分類」+「當天筆記分類」
   availableCategories = computed(() => {
-    const set = new Set<string>(this.logCategories());
-    for (const l of this.learningLogs()) set.add((l as any).category || '通用');
-    return Array.from(set);
+    const dayId = this.currentDayId();
+    const set = new Set<string>(this.managedCategories());
+    if (dayId) {
+      for (const l of this.learningLogs()) {
+        if (l.dayId !== dayId) continue;
+        set.add(this.normalizeCategoryName((l as any).category || '通用'));
+      }
+    }
+    return this.normalizeCategoryList(Array.from(set));
   });
 
   todaySuggestedCategories = computed(() => {
@@ -222,15 +230,31 @@ export class AppComponent {
     // Load persisted state
     this.completedTasks.set(this.loadCompletedTasks());
 
-    // Load persisted categories (if any)
+    // Load persisted categories (by day)
     try {
-      const savedCats = localStorage.getItem('quant_log_categories');
-      if (savedCats) {
-        const arr = JSON.parse(savedCats);
-        if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) {
-          const uniq = Array.from(new Set(arr.map(s => this.normalizeCategoryName(s)).filter(Boolean)));
-          if (!uniq.includes('通用')) uniq.unshift('通用');
-          if (uniq.length) this.logCategories.set(uniq);
+      const savedByDay = localStorage.getItem('quant_log_categories_by_day');
+      if (savedByDay) {
+        const parsed = JSON.parse(savedByDay);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const normalizedMap: Record<string, string[]> = {};
+          for (const [dayId, cats] of Object.entries(parsed as Record<string, unknown>)) {
+            if (!dayId || !Array.isArray(cats)) continue;
+            const strings = cats.filter(x => typeof x === 'string') as string[];
+            normalizedMap[dayId] = this.normalizeCategoryList(strings);
+          }
+          this.logCategoriesByDay.set(normalizedMap);
+        }
+      } else {
+        // Backward compatibility: migrate old global categories to current day
+        const savedLegacyCats = localStorage.getItem('quant_log_categories');
+        if (savedLegacyCats) {
+          const arr = JSON.parse(savedLegacyCats);
+          if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) {
+            const dayId = this.currentDayId() || 'W1D1';
+            this.logCategoriesByDay.set({
+              [dayId]: this.normalizeCategoryList(arr as string[])
+            });
+          }
         }
       }
     } catch (e) {
@@ -277,7 +301,18 @@ export class AppComponent {
     });
 
     effect(() => {
-      localStorage.setItem('quant_log_categories', JSON.stringify(this.logCategories()));
+      localStorage.setItem('quant_log_categories_by_day', JSON.stringify(this.logCategoriesByDay()));
+    });
+
+    // 切換日期時，若目前選到不存在的分類，安全回退到「通用 / 全部」
+    effect(() => {
+      const managed = this.managedCategories();
+      const available = this.availableCategories();
+      const current = this.currentLogCategory();
+      const filter = this.categoryFilter();
+
+      if (!managed.includes(current)) this.currentLogCategory.set('通用');
+      if (filter !== '全部' && !available.includes(filter)) this.categoryFilter.set('全部');
     });
 
     // Draw Chart
@@ -490,16 +525,17 @@ groupedDayLogs = computed(() => {
   }
 
   removeCategory(category: string) {
+    const dayId = this.currentDayId();
     const normalized = this.normalizeCategoryName(category);
-    if (!normalized || normalized === '通用') return;
+    if (!dayId || !normalized || normalized === '通用') return;
 
-    this.logCategories.update(arr => {
-      const next = arr.filter(c => this.normalizeCategoryName(c) !== normalized);
-      return next.includes('通用') ? next : ['通用', ...next];
-    });
+    this.updateDayCategories(dayId, arr =>
+      arr.filter(c => this.normalizeCategoryName(c) !== normalized)
+    );
 
-    // 把已存在筆記中的該分類回填為「通用」，避免分類籤在列表又被舊資料帶回來
+    // 只處理當天筆記，避免影響其他日期
     this.learningLogs.update(logs => logs.map(l => {
+      if (l.dayId !== dayId) return l;
       const c = this.normalizeCategoryName((l as any).category || '通用');
       if (c !== normalized) return l;
       return { ...l, category: '通用' };
@@ -521,18 +557,46 @@ groupedDayLogs = computed(() => {
   }
 
   private addCategoryByName(category: string) {
+    const dayId = this.currentDayId();
     const normalized = this.normalizeCategoryName(category);
-    if (!normalized) return;
-    this.logCategories.update(arr => {
+    if (!dayId || !normalized) return;
+
+    this.updateDayCategories(dayId, arr => {
       const map = new Map<string, string>();
       arr.forEach(c => {
         const key = this.normalizeCategoryName(c);
-        if (key) map.set(key, c);
+        if (key) map.set(key, key);
       });
-      if (!map.has(normalized)) map.set(normalized, normalized);
-      const next = Array.from(map.values()).map(c => this.normalizeCategoryName(c)).filter(Boolean);
-      if (!next.includes('通用')) next.unshift('通用');
-      return next;
+      map.set(normalized, normalized);
+      return Array.from(map.values());
+    });
+  }
+
+  private currentDayId(): string {
+    return this.currentDaySchedule()?.day_id || this.selectedDayId() || '';
+  }
+
+  private normalizeCategoryList(raw: string[]): string[] {
+    const uniq = Array.from(
+      new Set((raw || []).map(c => this.normalizeCategoryName(c)).filter(Boolean))
+    );
+    if (!uniq.includes('通用')) uniq.unshift('通用');
+    return uniq;
+  }
+
+  private inferCategoriesFromLogs(dayId: string): string[] {
+    const fromLogs = this.learningLogs()
+      .filter(l => l.dayId === dayId)
+      .map(l => this.normalizeCategoryName((l as any).category || '通用'));
+    return this.normalizeCategoryList(fromLogs);
+  }
+
+  private updateDayCategories(dayId: string, updater: (arr: string[]) => string[]) {
+    const fallback = this.inferCategoriesFromLogs(dayId);
+    this.logCategoriesByDay.update(prev => {
+      const base = prev[dayId]?.length ? prev[dayId] : fallback;
+      const next = this.normalizeCategoryList(updater(this.normalizeCategoryList(base)));
+      return { ...prev, [dayId]: next };
     });
   }
 
