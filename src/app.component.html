@@ -536,6 +536,13 @@ markdown img {
                       </span>
                       <div class="flex items-center space-x-3">
                         <button
+                          (click)="exportNotesBackup()"
+                          class="text-xs text-emerald-300 hover:text-emerald-200 transition-colors font-medium border border-emerald-500/30 px-2 py-1 rounded hover:bg-emerald-500/10"
+                          title="下載本機備份 JSON"
+                        >
+                          <i class="fas fa-file-arrow-down mr-1"></i> 匯出備份
+                        </button>
+                        <button
                           (click)="generateDailySummary()"
                           class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors font-medium border border-cyan-500/30 px-2 py-1 rounded hover:bg-cyan-500/10"
                           title="Generate Daily Recap with AI"

@@ -689,6 +689,27 @@ groupedDayLogs = computed(() => {
     this.journalSearch.set('');
   }
 
+  exportNotesBackup() {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      learningLogs: this.learningLogs(),
+      logCategoriesByDay: this.logCategoriesByDay(),
+      completedTasks: Array.from(this.completedTasks())
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `quant-notes-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
 // 安全的 UUID（避免部分環境沒有 crypto.randomUUID）
 private uuid(): string {
   const c: any = (globalThis as any).crypto;
