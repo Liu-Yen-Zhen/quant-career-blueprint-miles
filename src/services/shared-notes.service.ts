@@ -27,42 +27,11 @@ export class SharedNotesService {
   constructor() {
     this.supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
       }
     });
-  }
-
-  async hasSession(): Promise<boolean> {
-    const { data, error } = await this.supabase.auth.getSession();
-    if (error) throw error;
-    return !!data.session;
-  }
-
-  onAuthStateChange(cb: (signedIn: boolean) => void): { unsubscribe: () => void } {
-    const { data } = this.supabase.auth.onAuthStateChange((_event, session) => {
-      cb(!!session);
-    });
-    return {
-      unsubscribe: () => data.subscription.unsubscribe()
-    };
-  }
-
-  async signInWithOtp(email: string): Promise<void> {
-    const clean = String(email || '').trim();
-    if (!clean) throw new Error('Email is required');
-    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
-    const { error } = await this.supabase.auth.signInWithOtp({
-      email: clean,
-      options: redirectTo ? { emailRedirectTo: redirectTo } : undefined
-    });
-    if (error) throw error;
-  }
-
-  async signOut(): Promise<void> {
-    const { error } = await this.supabase.auth.signOut();
-    if (error) throw error;
   }
 
   async loadState(): Promise<SharedNotesState | null> {
