@@ -535,6 +535,32 @@ markdown img {
                         <i class="fas fa-folder-open text-cyan-400 mr-2"></i>紀錄結果
                       </span>
                       <div class="flex items-center space-x-3">
+                        @if (!isOwnerSignedIn()) {
+                          <input
+                            class="bg-slate-900 text-slate-200 text-xs rounded border border-slate-800 focus:outline-none focus:border-cyan-500/50 px-2 py-1 w-44"
+                            placeholder="管理者 Email"
+                            [ngModel]="ownerEmailInput()"
+                            (ngModelChange)="ownerEmailInput.set($event)"
+                          />
+                          <button
+                            (click)="requestOwnerLogin()"
+                            [disabled]="ownerAuthLoading()"
+                            class="text-xs text-cyan-300 hover:text-cyan-200 transition-colors font-medium border border-cyan-500/30 px-2 py-1 rounded hover:bg-cyan-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="寄送管理登入連結"
+                          >
+                            <i class="fas fa-right-to-bracket mr-1"></i> 管理登入
+                          </button>
+                        } @else {
+                          <span class="text-[11px] px-2 py-1 rounded border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">管理模式</span>
+                          <button
+                            (click)="logoutOwner()"
+                            [disabled]="ownerAuthLoading()"
+                            class="text-xs text-slate-300 hover:text-white transition-colors font-medium border border-slate-600 px-2 py-1 rounded hover:bg-slate-700/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="登出管理模式"
+                          >
+                            登出
+                          </button>
+                        }
                         <button
                           (click)="exportNotesBackup()"
                           class="text-xs text-emerald-300 hover:text-emerald-200 transition-colors font-medium border border-emerald-500/30 px-2 py-1 rounded hover:bg-emerald-500/10"
@@ -550,6 +576,7 @@ markdown img {
                           <i class="fas fa-magic mr-1"></i> ✨ 生成總結
                         </button>
                         <span class="text-xs text-slate-500">{{ filteredDayLogs().length }} / {{ currentDayLogs().length }} entries</span>
+                        <span class="text-[11px] text-slate-400">{{ ownerAuthMessage() }}</span>
                       </div>
                     </div>
 
