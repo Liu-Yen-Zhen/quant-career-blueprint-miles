@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed, effect, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service';
+import { SharedNotesService, SharedLogEntry } from './services/shared-notes.service';
 import { MarkdownModule, provideMarkdown } from 'ngx-markdown';
 import { FormsModule } from '@angular/forms';
 import * as d3 from 'd3';
@@ -45,6 +46,7 @@ type TaskSlot = 'am' | 'pm' | 'night';
 })
 export class AppComponent {
   private geminiService = inject(GeminiService);
+  private sharedNotesService = inject(SharedNotesService);
   radarChartContainer = viewChild<ElementRef>('radarChart');
   journalSection = viewChild<ElementRef>('journalSection');
 
@@ -72,6 +74,10 @@ export class AppComponent {
   categoryFilter = signal<string>('全部'); // 列表篩選用
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
+  private sharedBootstrapDone = signal<boolean>(false);
+  private sharedSyncEnabled = signal<boolean>(true);
+  private isHydratingFromShared = false;
+  private sharedSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
   managedCategories = computed(() => {
     const dayId = this.currentDayId();
@@ -315,6 +321,16 @@ export class AppComponent {
       if (filter !== '全部' && !available.includes(filter)) this.categoryFilter.set('全部');
     });
 
+    // Shared notes sync（Supabase）
+    effect(() => {
+      const ready = this.sharedBootstrapDone();
+      const enabled = this.sharedSyncEnabled();
+      const logs = this.learningLogs();
+      const categories = this.logCategoriesByDay();
+      if (!ready || !enabled || this.isHydratingFromShared) return;
+      this.scheduleSharedSync(logs, categories);
+    });
+
     // Draw Chart
     effect(() => {
       const skills = this.currentEarnedSkills();
@@ -322,6 +338,8 @@ export class AppComponent {
         setTimeout(() => this.drawRadarChart(skills), 100);
       }
     });
+
+    void this.hydrateFromSharedStore();
   }
 
   // --- Computed Skills ---
@@ -367,6 +385,66 @@ export class AppComponent {
       console.warn('Failed to parse completed tasks', e);
       return new Set<string>();
     }
+  }
+
+  private async hydrateFromSharedStore() {
+    try {
+      this.isHydratingFromShared = true;
+      const remote = await this.sharedNotesService.loadState();
+      if (!remote) return;
+
+      const hasRemoteLogs = remote.logs.length > 0;
+      const hasRemoteCategories = Object.keys(remote.categoriesByDay).length > 0;
+
+      // 遠端有資料時，以遠端為主；否則保留本地快取並於後續同步上去
+      if (hasRemoteLogs) {
+        this.learningLogs.set(remote.logs as LogEntry[]);
+      }
+      if (hasRemoteCategories) {
+        this.logCategoriesByDay.set(remote.categoriesByDay);
+      }
+    } catch (e) {
+      console.warn('Supabase shared sync unavailable; fallback to local-only mode.', e);
+      if (this.isMissingSharedTableError(e)) {
+        this.sharedSyncEnabled.set(false);
+      }
+    } finally {
+      this.isHydratingFromShared = false;
+      this.sharedBootstrapDone.set(true);
+    }
+  }
+
+  private scheduleSharedSync(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
+    if (this.sharedSyncTimer) clearTimeout(this.sharedSyncTimer);
+
+    const logsSnapshot = logs.map(l => ({ ...l }));
+    const categoriesSnapshot = Object.fromEntries(
+      Object.entries(categoriesByDay).map(([dayId, categories]) => [dayId, [...(categories || [])]])
+    );
+
+    this.sharedSyncTimer = setTimeout(() => {
+      void this.pushSharedState(logsSnapshot, categoriesSnapshot);
+    }, 700);
+  }
+
+  private async pushSharedState(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
+    try {
+      await this.sharedNotesService.replaceState({
+        logs: logs as SharedLogEntry[],
+        categoriesByDay
+      });
+    } catch (e) {
+      console.warn('Failed to sync shared notes to Supabase.', e);
+      if (this.isMissingSharedTableError(e)) {
+        this.sharedSyncEnabled.set(false);
+      }
+    }
+  }
+
+  private isMissingSharedTableError(error: unknown): boolean {
+    const code = (error as any)?.code;
+    const message = String((error as any)?.message || '');
+    return code === 'PGRST205' || message.includes('schema cache');
   }
 
   private isTaskDone(completed: Set<string>, key: string, legacyTask?: string): boolean {
