@@ -75,14 +75,9 @@ export class AppComponent {
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
   private sharedBootstrapDone = signal<boolean>(false);
-  private sharedSyncEnabled = signal<boolean>(false);
+  private sharedSyncEnabled = signal<boolean>(true);
   private isHydratingFromShared = false;
   private sharedSyncTimer: ReturnType<typeof setTimeout> | null = null;
-  ownerEmailInput = signal<string>('');
-  ownerAuthMessage = signal<string>('');
-  ownerAuthLoading = signal<boolean>(false);
-  isOwnerSignedIn = signal<boolean>(false);
-  private authSubscription: { unsubscribe: () => void } | null = null;
 
   managedCategories = computed(() => {
     const dayId = this.currentDayId();
@@ -344,8 +339,6 @@ export class AppComponent {
       }
     });
 
-    this.bindOwnerAuthState();
-    void this.refreshOwnerAuthState();
     void this.hydrateFromSharedStore();
   }
 
@@ -412,7 +405,7 @@ export class AppComponent {
       }
     } catch (e) {
       console.warn('Supabase shared sync unavailable; fallback to local-only mode.', e);
-      if (this.shouldDisableSharedSync(e)) {
+      if (this.isMissingSharedTableError(e)) {
         this.sharedSyncEnabled.set(false);
       }
     } finally {
@@ -440,14 +433,10 @@ export class AppComponent {
         logs: logs as SharedLogEntry[],
         categoriesByDay
       });
-      this.ownerAuthMessage.set('已同步到雲端');
     } catch (e) {
       console.warn('Failed to sync shared notes to Supabase.', e);
-      if (this.shouldDisableSharedSync(e)) {
+      if (this.isMissingSharedTableError(e)) {
         this.sharedSyncEnabled.set(false);
-        if (this.isPermissionError(e)) {
-          this.ownerAuthMessage.set('目前是體驗模式：沒有雲端寫入權限。');
-        }
       }
     }
   }
@@ -456,80 +445,6 @@ export class AppComponent {
     const code = (error as any)?.code;
     const message = String((error as any)?.message || '');
     return code === 'PGRST205' || message.includes('schema cache');
-  }
-
-  private isPermissionError(error: unknown): boolean {
-    const code = String((error as any)?.code || '');
-    const message = String((error as any)?.message || '').toLowerCase();
-    return code === '42501' || message.includes('row-level security');
-  }
-
-  private shouldDisableSharedSync(error: unknown): boolean {
-    return this.isMissingSharedTableError(error) || this.isPermissionError(error);
-  }
-
-  private bindOwnerAuthState() {
-    if (this.authSubscription) this.authSubscription.unsubscribe();
-    this.authSubscription = this.sharedNotesService.onAuthStateChange((signedIn) => {
-      this.isOwnerSignedIn.set(signedIn);
-      this.sharedSyncEnabled.set(signedIn);
-      if (signedIn) {
-        this.ownerAuthMessage.set('管理模式已啟用（可寫入雲端）');
-      } else {
-        this.ownerAuthMessage.set('體驗模式（你可操作，但不會改到雲端）');
-      }
-    });
-  }
-
-  private async refreshOwnerAuthState() {
-    try {
-      const signedIn = await this.sharedNotesService.hasSession();
-      this.isOwnerSignedIn.set(signedIn);
-      this.sharedSyncEnabled.set(signedIn);
-      if (signedIn) {
-        this.ownerAuthMessage.set('管理模式已啟用（可寫入雲端）');
-      } else {
-        this.ownerAuthMessage.set('體驗模式（你可操作，但不會改到雲端）');
-      }
-    } catch (e) {
-      console.warn('Failed to resolve auth session.', e);
-      this.isOwnerSignedIn.set(false);
-      this.sharedSyncEnabled.set(false);
-      this.ownerAuthMessage.set('體驗模式（你可操作，但不會改到雲端）');
-    }
-  }
-
-  async requestOwnerLogin() {
-    const email = this.ownerEmailInput().trim();
-    if (!email) {
-      this.ownerAuthMessage.set('請先輸入管理者 Email');
-      return;
-    }
-    this.ownerAuthLoading.set(true);
-    try {
-      await this.sharedNotesService.signInWithOtp(email);
-      this.ownerAuthMessage.set('已寄出登入連結，請到信箱點擊後回到網站。');
-    } catch (e) {
-      console.warn('Owner login request failed.', e);
-      this.ownerAuthMessage.set('登入連結發送失敗，請檢查 Email 或稍後再試。');
-    } finally {
-      this.ownerAuthLoading.set(false);
-    }
-  }
-
-  async logoutOwner() {
-    this.ownerAuthLoading.set(true);
-    try {
-      await this.sharedNotesService.signOut();
-      this.isOwnerSignedIn.set(false);
-      this.sharedSyncEnabled.set(false);
-      this.ownerAuthMessage.set('已登出，回到體驗模式。');
-    } catch (e) {
-      console.warn('Sign out failed.', e);
-      this.ownerAuthMessage.set('登出失敗，請稍後再試。');
-    } finally {
-      this.ownerAuthLoading.set(false);
-    }
   }
 
   private isTaskDone(completed: Set<string>, key: string, legacyTask?: string): boolean {
