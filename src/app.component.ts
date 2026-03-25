@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect, ElementRef, viewChild } from '@angular/core';
+import { Component, inject, signal, computed, effect, ElementRef, viewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service';
 import { SharedNotesService, SharedLogEntry } from './services/shared-notes.service';
@@ -44,7 +44,7 @@ type TaskSlot = 'am' | 'pm' | 'night';
   templateUrl: './app.component.html',
   styleUrls: []
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   private geminiService = inject(GeminiService);
   private sharedNotesService = inject(SharedNotesService);
   radarChartContainer = viewChild<ElementRef>('radarChart');
@@ -78,6 +78,19 @@ export class AppComponent {
   private sharedSyncEnabled = signal<boolean>(true);
   private isHydratingFromShared = false;
   private sharedSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  // TODO: 如 owner email 變更，請同步更新 supabase_schema.sql 的 owner_email 常數
+  private readonly ownerEmail = 'miles891002@gmail.com';
+  authUserEmail = signal<string>('');
+  ownerLoginEmail = signal<string>(this.ownerEmail);
+  ownerLoginPassword = signal<string>('');
+  authLoading = signal<boolean>(false);
+  authError = signal<string>('');
+  private authStateUnsubscribe: (() => void) | null = null;
+
+  canEdit = computed(() => {
+    const signedIn = this.authUserEmail().trim().toLowerCase();
+    return !!signedIn && signedIn === this.ownerEmail.toLowerCase();
+  });
 
   managedCategories = computed(() => {
     const dayId = this.currentDayId();
@@ -325,9 +338,10 @@ export class AppComponent {
     effect(() => {
       const ready = this.sharedBootstrapDone();
       const enabled = this.sharedSyncEnabled();
+      const canEdit = this.canEdit();
       const logs = this.learningLogs();
       const categories = this.logCategoriesByDay();
-      if (!ready || !enabled || this.isHydratingFromShared) return;
+      if (!ready || !enabled || !canEdit || this.isHydratingFromShared) return;
       this.scheduleSharedSync(logs, categories);
     });
 
@@ -339,7 +353,13 @@ export class AppComponent {
       }
     });
 
+    void this.initAuthState();
     void this.hydrateFromSharedStore();
+  }
+
+  ngOnDestroy(): void {
+    if (this.authStateUnsubscribe) this.authStateUnsubscribe();
+    if (this.sharedSyncTimer) clearTimeout(this.sharedSyncTimer);
   }
 
   // --- Computed Skills ---
@@ -387,6 +407,77 @@ export class AppComponent {
     }
   }
 
+  private async initAuthState() {
+    try {
+      const email = await this.sharedNotesService.getCurrentUserEmail();
+      this.authUserEmail.set((email || '').toLowerCase());
+    } catch (e) {
+      console.warn('Failed to load auth session state.', e);
+    }
+
+    this.authStateUnsubscribe = this.sharedNotesService.onAuthStateChange((email) => {
+      const nextEmail = (email || '').toLowerCase();
+      const prevEmail = this.authUserEmail();
+      if (nextEmail === prevEmail) return;
+
+      this.authUserEmail.set(nextEmail);
+      this.authError.set('');
+
+      if (nextEmail && nextEmail === this.ownerEmail.toLowerCase()) {
+        this.sharedSyncEnabled.set(true);
+        void this.hydrateFromSharedStore();
+      }
+    });
+  }
+
+  async signInOwner() {
+    const email = this.ownerLoginEmail().trim().toLowerCase();
+    const password = this.ownerLoginPassword();
+    if (!email || !password) return;
+
+    this.authLoading.set(true);
+    this.authError.set('');
+    try {
+      const signedInEmail = await this.sharedNotesService.signInWithPassword(email, password);
+      this.authUserEmail.set((signedInEmail || '').toLowerCase());
+      this.ownerLoginPassword.set('');
+
+      if (this.authUserEmail() !== this.ownerEmail.toLowerCase()) {
+        this.authError.set('已登入但不是 owner 帳號，目前為唯讀模式。');
+        return;
+      }
+
+      this.sharedSyncEnabled.set(true);
+      await this.hydrateFromSharedStore();
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.authLoading.set(false);
+    }
+  }
+
+  async signOutOwner() {
+    this.authLoading.set(true);
+    this.authError.set('');
+    try {
+      await this.sharedNotesService.signOut();
+      this.authUserEmail.set('');
+      this.ownerLoginPassword.set('');
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.authLoading.set(false);
+    }
+  }
+
+  private toFriendlyAuthError(error: unknown): string {
+    const message = String((error as any)?.message || '登入失敗');
+    if (message.toLowerCase().includes('invalid login credentials')) {
+      return '帳號或密碼錯誤，請重新確認。';
+    }
+    return message;
+  }
+
   private async hydrateFromSharedStore() {
     try {
       this.isHydratingFromShared = true;
@@ -424,6 +515,7 @@ export class AppComponent {
   }
 
   private async pushSharedState(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
+    if (!this.canEdit()) return;
     try {
       await this.sharedNotesService.replaceState({
         logs: logs as SharedLogEntry[],
@@ -618,6 +710,7 @@ groupedDayLogs = computed(() => {
   closeSidebar() { this.sidebarOpen.set(false); }
 
   toggleTask(taskKey: string, legacyTask?: string) {
+    if (!this.canEdit()) return;
     this.completedTasks.update(set => {
       const newSet = new Set(set);
       const done = this.isTaskDone(newSet, taskKey, legacyTask);
@@ -651,6 +744,7 @@ groupedDayLogs = computed(() => {
 
   // Learning Journal：新增分類（可用於自訂模組/主題）
   addCategory() {
+    if (!this.canEdit()) return;
     const raw = this.newCategoryInput().trim();
     if (!raw) return;
     const normalized = this.normalizeCategoryName(raw);
@@ -661,6 +755,7 @@ groupedDayLogs = computed(() => {
   }
 
   removeCategory(category: string) {
+    if (!this.canEdit()) return;
     const dayId = this.currentDayId();
     const normalized = this.normalizeCategoryName(category);
     if (!dayId || !normalized || normalized === '通用') return;
@@ -686,6 +781,7 @@ groupedDayLogs = computed(() => {
   }
 
   addTodayTopicsAsCategories() {
+    if (!this.canEdit()) return;
     const topics = this.todaySuggestedCategories();
     if (!topics.length) return;
     topics.forEach(topic => this.addCategoryByName(topic));
@@ -795,6 +891,7 @@ private uuid(): string {
 
   // 修改：儲存時加入 type
   addLog() {
+    if (!this.canEdit()) return;
     const content = this.currentLogInput().trim();
     if (!content) return;
     this.learningLogs.update(logs => [{ 
@@ -808,10 +905,14 @@ private uuid(): string {
     this.currentLogInput.set('');
     this.currentLogTimestamp.set('');
   }
-  deleteLog(id: string) { this.learningLogs.update(logs => logs.filter(l => l.id !== id)); }
+  deleteLog(id: string) {
+    if (!this.canEdit()) return;
+    this.learningLogs.update(logs => logs.filter(l => l.id !== id));
+  }
 
   // 新增：生成每日總結
   async generateDailySummary() {
+    if (!this.canEdit()) return;
     const logs = this.currentDayLogs().map(l => ({ type: l.type || 'idea', content: l.content }));
     const title = this.currentDaySchedule()?.title || 'Quant Study';
     
