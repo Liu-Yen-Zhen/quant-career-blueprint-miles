@@ -393,19 +393,15 @@ export class AppComponent {
       const remote = await this.sharedNotesService.loadState();
       if (!remote) return;
 
-      const hasRemoteLogs = remote.logs.length > 0;
-      const hasRemoteCategories = Object.keys(remote.categoriesByDay).length > 0;
+      // 合併遠端 + 本地，避免「遠端讀得到但寫不進去」時覆蓋本地最新內容
+      const mergedLogs = this.mergeSharedLogs(this.learningLogs(), remote.logs as LogEntry[]);
+      this.learningLogs.set(mergedLogs);
 
-      // 遠端有資料時，以遠端為主；否則保留本地快取並於後續同步上去
-      if (hasRemoteLogs) {
-        this.learningLogs.set(remote.logs as LogEntry[]);
-      }
-      if (hasRemoteCategories) {
-        this.logCategoriesByDay.set(remote.categoriesByDay);
-      }
+      const mergedCategories = this.mergeSharedCategories(this.logCategoriesByDay(), remote.categoriesByDay);
+      this.logCategoriesByDay.set(mergedCategories);
     } catch (e) {
       console.warn('Supabase shared sync unavailable; fallback to local-only mode.', e);
-      if (this.isMissingSharedTableError(e)) {
+      if (this.shouldDisableSharedSync(e)) {
         this.sharedSyncEnabled.set(false);
       }
     } finally {
@@ -435,16 +431,78 @@ export class AppComponent {
       });
     } catch (e) {
       console.warn('Failed to sync shared notes to Supabase.', e);
-      if (this.isMissingSharedTableError(e)) {
+      if (this.shouldDisableSharedSync(e)) {
         this.sharedSyncEnabled.set(false);
       }
     }
   }
 
+  private mergeSharedLogs(localLogs: LogEntry[], remoteLogs: LogEntry[]): LogEntry[] {
+    const merged = new Map<string, LogEntry>();
+    const ingest = (items: LogEntry[]) => {
+      for (const item of items || []) {
+        const normalized: LogEntry = {
+          id: (item?.id || '').trim() || this.uuid(),
+          dayId: String(item?.dayId || '').trim(),
+          timestamp: Number.isFinite(Number(item?.timestamp)) ? Number(item?.timestamp) : Date.now(),
+          content: String(item?.content || ''),
+          type: (item?.type === 'theory' || item?.type === 'code' || item?.type === 'bug' || item?.type === 'idea') ? item.type : 'idea',
+          category: this.normalizeCategoryName(item?.category || '通用')
+        };
+        const prev = merged.get(normalized.id);
+        if (!prev || normalized.timestamp >= prev.timestamp) {
+          merged.set(normalized.id, normalized);
+        }
+      }
+    };
+
+    // 先放遠端再放本地：同 id 時本地較新（或同時戳）可覆蓋
+    ingest(remoteLogs || []);
+    ingest(localLogs || []);
+    return Array.from(merged.values()).sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  private mergeSharedCategories(
+    localByDay: Record<string, string[]>,
+    remoteByDay: Record<string, string[]>
+  ): Record<string, string[]> {
+    const merged: Record<string, string[]> = {};
+    const dayIds = new Set<string>([
+      ...Object.keys(remoteByDay || {}),
+      ...Object.keys(localByDay || {})
+    ]);
+
+    for (const dayId of dayIds) {
+      if (!dayId) continue;
+      const remote = Array.isArray(remoteByDay?.[dayId]) ? remoteByDay[dayId] : [];
+      const local = Array.isArray(localByDay?.[dayId]) ? localByDay[dayId] : [];
+      merged[dayId] = this.normalizeCategoryList([...remote, ...local]);
+    }
+
+    return merged;
+  }
+
+  private shouldDisableSharedSync(error: unknown): boolean {
+    return this.isMissingSharedTableError(error) || this.isSharedPermissionError(error);
+  }
+
   private isMissingSharedTableError(error: unknown): boolean {
-    const code = (error as any)?.code;
+    const code = String((error as any)?.code || '');
     const message = String((error as any)?.message || '');
     return code === 'PGRST205' || message.includes('schema cache');
+  }
+
+  private isSharedPermissionError(error: unknown): boolean {
+    const code = String((error as any)?.code || '');
+    const status = Number((error as any)?.status || 0);
+    const message = String((error as any)?.message || '').toLowerCase();
+    return (
+      code === '42501' ||
+      status === 401 ||
+      status === 403 ||
+      message.includes('row-level security') ||
+      message.includes('permission denied')
+    );
   }
 
   private isTaskDone(completed: Set<string>, key: string, legacyTask?: string): boolean {
