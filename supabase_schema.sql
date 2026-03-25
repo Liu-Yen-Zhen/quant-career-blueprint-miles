@@ -46,22 +46,40 @@ before update on public.log_categories_by_day
 for each row
 execute function public.touch_updated_at();
 
--- RLS: public read/write (simple sharing mode)
+-- RLS: public read, owner-only write
+-- 若 owner email 要更換，請同步更新下方 owner_email 常數與前端 app.component.ts
+-- 套用日期：2026-03-25
 alter table public.learning_logs enable row level security;
 alter table public.log_categories_by_day enable row level security;
 
 drop policy if exists "public_rw_learning_logs" on public.learning_logs;
-create policy "public_rw_learning_logs"
+drop policy if exists "public_read_learning_logs" on public.learning_logs;
+drop policy if exists "owner_write_learning_logs" on public.learning_logs;
+create policy "public_read_learning_logs"
+on public.learning_logs
+for select
+to anon, authenticated
+using (true);
+
+create policy "owner_write_learning_logs"
 on public.learning_logs
 for all
-to anon, authenticated
-using (true)
-with check (true);
+to authenticated
+using ((auth.jwt() ->> 'email') = 'miles891002@gmail.com')
+with check ((auth.jwt() ->> 'email') = 'miles891002@gmail.com');
 
 drop policy if exists "public_rw_log_categories_by_day" on public.log_categories_by_day;
-create policy "public_rw_log_categories_by_day"
+drop policy if exists "public_read_log_categories_by_day" on public.log_categories_by_day;
+drop policy if exists "owner_write_log_categories_by_day" on public.log_categories_by_day;
+create policy "public_read_log_categories_by_day"
+on public.log_categories_by_day
+for select
+to anon, authenticated
+using (true);
+
+create policy "owner_write_log_categories_by_day"
 on public.log_categories_by_day
 for all
-to anon, authenticated
-using (true)
-with check (true);
+to authenticated
+using ((auth.jwt() ->> 'email') = 'miles891002@gmail.com')
+with check ((auth.jwt() ->> 'email') = 'miles891002@gmail.com');
