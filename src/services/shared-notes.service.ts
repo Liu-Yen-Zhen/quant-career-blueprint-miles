@@ -27,11 +27,41 @@ export class SharedNotesService {
   constructor() {
     this.supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
+        // 讓 owner 在同一瀏覽器可保留登入，跨裝置/無痕則可重新登入取回同一份資料
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
       }
     });
+  }
+
+  async getCurrentUserEmail(): Promise<string | null> {
+    const { data, error } = await this.supabase.auth.getUser();
+    if (error) throw error;
+    return data.user?.email?.toLowerCase() || null;
+  }
+
+  onAuthStateChange(callback: (email: string | null) => void): () => void {
+    const { data } = this.supabase.auth.onAuthStateChange((_event, session) => {
+      callback(session?.user?.email?.toLowerCase() || null);
+    });
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }
+
+  async signInWithPassword(email: string, password: string): Promise<string> {
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password
+    });
+    if (error) throw error;
+    return data.user?.email?.toLowerCase() || email.trim().toLowerCase();
+  }
+
+  async signOut(): Promise<void> {
+    const { error } = await this.supabase.auth.signOut();
+    if (error) throw error;
   }
 
   async loadState(): Promise<SharedNotesState | null> {
