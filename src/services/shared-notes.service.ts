@@ -16,6 +16,7 @@ export interface SharedLogEntry {
 export interface SharedNotesState {
   logs: SharedLogEntry[];
   categoriesByDay: Record<string, string[]>;
+  completedTasks: string[];
 }
 
 @Injectable({
@@ -108,7 +109,25 @@ export class SharedNotesService {
       categoriesByDay[dayId] = this.normalizeCategoryList(arr);
     }
 
-    return { logs, categoriesByDay };
+    let completedTasks: string[] = [];
+    const completedRes = await this.supabase
+      .from('completed_tasks')
+      .select('task_key');
+    if (completedRes.error) {
+      if (!this.isMissingTableError(completedRes.error)) {
+        throw completedRes.error;
+      }
+    } else {
+      completedTasks = (completedRes.data || [])
+        .map((row: any) => this.normalizeTaskKey(row?.task_key))
+        .filter(Boolean);
+    }
+
+    return {
+      logs,
+      categoriesByDay,
+      completedTasks: Array.from(new Set(completedTasks))
+    };
   }
 
   async replaceState(state: SharedNotesState): Promise<void> {
@@ -127,6 +146,10 @@ export class SharedNotesService {
         categories: this.normalizeCategoryList(categories || [])
       }))
       .filter(r => r.day_id);
+
+    const completedTasks = Array.from(
+      new Set((state.completedTasks || []).map(v => this.normalizeTaskKey(v)).filter(Boolean))
+    );
 
     const deleteLogsRes = await this.supabase
       .from('learning_logs')
@@ -153,6 +176,23 @@ export class SharedNotesService {
         .upsert(categoriesByDay, { onConflict: 'day_id' });
       if (upsertCategoriesRes.error) throw upsertCategoriesRes.error;
     }
+
+    const deleteCompletedRes = await this.supabase
+      .from('completed_tasks')
+      .delete()
+      .not('task_key', 'is', null);
+    if (deleteCompletedRes.error && !this.isMissingTableError(deleteCompletedRes.error)) {
+      throw deleteCompletedRes.error;
+    }
+
+    if (completedTasks.length > 0) {
+      const upsertCompletedRes = await this.supabase
+        .from('completed_tasks')
+        .upsert(completedTasks.map(taskKey => ({ task_key: taskKey })), { onConflict: 'task_key' });
+      if (upsertCompletedRes.error && !this.isMissingTableError(upsertCompletedRes.error)) {
+        throw upsertCompletedRes.error;
+      }
+    }
   }
 
   private normalizeCategoryName(raw: string): string {
@@ -170,5 +210,15 @@ export class SharedNotesService {
   private normalizeType(raw: unknown): 'theory' | 'code' | 'bug' | 'idea' {
     if (raw === 'theory' || raw === 'code' || raw === 'bug' || raw === 'idea') return raw;
     return 'idea';
+  }
+
+  private normalizeTaskKey(raw: unknown): string {
+    return String(raw || '').trim();
+  }
+
+  private isMissingTableError(error: unknown): boolean {
+    const code = String((error as any)?.code || '');
+    const message = String((error as any)?.message || '').toLowerCase();
+    return code === 'PGRST205' || message.includes('schema cache');
   }
 }
