@@ -475,6 +475,12 @@ export class AppComponent implements OnDestroy {
 
   private toFriendlyAuthError(error: unknown): string {
     const message = String((error as any)?.message || '登入失敗');
+    const lowered = message.toLowerCase();
+
+    if (lowered.includes('failed to fetch') || lowered.includes('networkerror') || lowered.includes('load failed')) {
+      return '無法連線到 Supabase（Failed to fetch）。請檢查：1) Project URL 是否正確 2) 專案是否 Active 3) 瀏覽器是否有擋廣告/隱私外掛阻擋請求。';
+    }
+
     if (message.toLowerCase().includes('invalid login credentials')) {
       return '帳號或密碼錯誤，請重新確認。';
     }
