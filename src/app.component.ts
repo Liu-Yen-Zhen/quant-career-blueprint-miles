@@ -85,6 +85,11 @@ export class AppComponent implements OnDestroy {
   ownerLoginPassword = signal<string>('');
   authLoading = signal<boolean>(false);
   authError = signal<string>('');
+  authInfo = signal<string>('');
+  recoveryMode = signal<boolean>(false);
+  recoveryNewPassword = signal<string>('');
+  recoveryConfirmPassword = signal<string>('');
+  recoveryLoading = signal<boolean>(false);
   private authStateUnsubscribe: (() => void) | null = null;
 
   isOwnerSignedIn = computed(() => {
@@ -356,6 +361,11 @@ export class AppComponent implements OnDestroy {
       }
     });
 
+    if (this.detectPasswordRecoveryFromUrl()) {
+      this.recoveryMode.set(true);
+      this.authInfo.set('偵測到重設密碼連結，請先設定新密碼。');
+    }
+
     void this.initAuthState();
     void this.hydrateFromSharedStore();
   }
@@ -418,13 +428,20 @@ export class AppComponent implements OnDestroy {
       console.warn('Failed to load auth session state.', e);
     }
 
-    this.authStateUnsubscribe = this.sharedNotesService.onAuthStateChange((email) => {
+    this.authStateUnsubscribe = this.sharedNotesService.onAuthStateChange((email, event) => {
       const nextEmail = (email || '').toLowerCase();
       const prevEmail = this.authUserEmail();
-      if (nextEmail === prevEmail) return;
+
+      if (event === 'PASSWORD_RECOVERY') {
+        this.recoveryMode.set(true);
+        this.authError.set('');
+        this.authInfo.set('已驗證重設密碼連結，請輸入新密碼。');
+      }
+
+      if (nextEmail === prevEmail && event !== 'PASSWORD_RECOVERY') return;
 
       this.authUserEmail.set(nextEmail);
-      this.authError.set('');
+      if (event !== 'PASSWORD_RECOVERY') this.authError.set('');
 
       if (nextEmail && nextEmail === this.ownerEmail.toLowerCase()) {
         this.sharedSyncEnabled.set(true);
@@ -440,6 +457,7 @@ export class AppComponent implements OnDestroy {
 
     this.authLoading.set(true);
     this.authError.set('');
+    this.authInfo.set('');
     try {
       const signedInEmail = await this.sharedNotesService.signInWithPassword(email, password);
       this.authUserEmail.set((signedInEmail || '').toLowerCase());
@@ -462,6 +480,7 @@ export class AppComponent implements OnDestroy {
   async signOutOwner() {
     this.authLoading.set(true);
     this.authError.set('');
+    this.authInfo.set('');
     try {
       await this.sharedNotesService.signOut();
       this.authUserEmail.set('');
@@ -473,12 +492,81 @@ export class AppComponent implements OnDestroy {
     }
   }
 
+  async sendOwnerPasswordResetEmail() {
+    const email = this.ownerLoginEmail().trim().toLowerCase();
+    if (!email) {
+      this.authError.set('請先輸入 owner email。');
+      return;
+    }
+
+    this.authLoading.set(true);
+    this.authError.set('');
+    this.authInfo.set('');
+    try {
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+      await this.sharedNotesService.sendPasswordResetEmail(email, redirectTo);
+      this.authInfo.set('已寄出重設密碼信。請點擊信件連結回到本站後，輸入新密碼。');
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.authLoading.set(false);
+    }
+  }
+
+  async completePasswordRecovery() {
+    const nextPassword = this.recoveryNewPassword();
+    const confirmPassword = this.recoveryConfirmPassword();
+
+    if (!nextPassword || nextPassword.length < 6) {
+      this.authError.set('新密碼至少需要 6 個字元。');
+      return;
+    }
+    if (nextPassword !== confirmPassword) {
+      this.authError.set('兩次輸入的密碼不一致。');
+      return;
+    }
+
+    this.recoveryLoading.set(true);
+    this.authError.set('');
+    this.authInfo.set('');
+    try {
+      await this.sharedNotesService.updateCurrentUserPassword(nextPassword);
+      this.recoveryMode.set(false);
+      this.recoveryNewPassword.set('');
+      this.recoveryConfirmPassword.set('');
+      this.clearRecoveryParamsFromUrl();
+      this.authInfo.set('密碼已更新，現在可以用新密碼登入 Owner。');
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.recoveryLoading.set(false);
+    }
+  }
+
+  private detectPasswordRecoveryFromUrl(): boolean {
+    if (typeof window === 'undefined') return false;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const query = new URLSearchParams(window.location.search);
+    const type = (hash.get('type') || query.get('type') || '').toLowerCase();
+    return type === 'recovery';
+  }
+
+  private clearRecoveryParamsFromUrl() {
+    if (typeof window === 'undefined') return;
+    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
+
   private toFriendlyAuthError(error: unknown): string {
     const message = String((error as any)?.message || '登入失敗');
     const lowered = message.toLowerCase();
 
     if (lowered.includes('failed to fetch') || lowered.includes('networkerror') || lowered.includes('load failed')) {
       return '無法連線到 Supabase（Failed to fetch）。請檢查：1) Project URL 是否正確 2) 專案是否 Active 3) 瀏覽器是否有擋廣告/隱私外掛阻擋請求。';
+    }
+
+    if (lowered.includes('invalid token') || lowered.includes('expired')) {
+      return '重設密碼連結已失效，請重新寄送重設密碼信。';
     }
 
     if (message.toLowerCase().includes('invalid login credentials')) {

@@ -368,6 +368,33 @@ markdown img {
                       }
                     </div>
 
+                    @if (recoveryMode()) {
+                      <div class="mt-2 grid gap-2 sm:grid-cols-3">
+                        <input
+                          type="password"
+                          class="bg-slate-900 text-slate-200 text-xs rounded border border-emerald-600/40 focus:outline-none focus:border-emerald-500 px-2 py-1"
+                          placeholder="新密碼（至少 6 碼）"
+                          [ngModel]="recoveryNewPassword()"
+                          (ngModelChange)="recoveryNewPassword.set($event)"
+                        />
+                        <input
+                          type="password"
+                          class="bg-slate-900 text-slate-200 text-xs rounded border border-emerald-600/40 focus:outline-none focus:border-emerald-500 px-2 py-1"
+                          placeholder="再次輸入新密碼"
+                          [ngModel]="recoveryConfirmPassword()"
+                          (ngModelChange)="recoveryConfirmPassword.set($event)"
+                          (keydown.enter)="completePasswordRecovery()"
+                        />
+                        <button
+                          (click)="completePasswordRecovery()"
+                          [disabled]="recoveryLoading() || !recoveryNewPassword().trim() || !recoveryConfirmPassword().trim()"
+                          class="text-xs px-3 py-1 rounded border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {{ recoveryLoading() ? '更新中...' : '更新密碼' }}
+                        </button>
+                      </div>
+                    }
+
                     @if (!isOwnerSignedIn()) {
                       <div class="mt-2 flex flex-wrap items-center gap-2">
                         <input
@@ -392,7 +419,18 @@ markdown img {
                         >
                           {{ authLoading() ? '登入中...' : 'Owner 登入' }}
                         </button>
+                        <button
+                          (click)="sendOwnerPasswordResetEmail()"
+                          [disabled]="authLoading() || !ownerLoginEmail().trim()"
+                          class="text-xs px-3 py-1 rounded border border-amber-500/40 text-amber-300 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {{ authLoading() ? '處理中...' : '忘記密碼' }}
+                        </button>
                       </div>
+                    }
+
+                    @if (authInfo()) {
+                      <div class="mt-2 text-[11px] text-cyan-300">{{ authInfo() }}</div>
                     }
 
                     @if (authError()) {
