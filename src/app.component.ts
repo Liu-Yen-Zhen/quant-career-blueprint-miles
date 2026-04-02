@@ -347,10 +347,11 @@ export class AppComponent implements OnDestroy {
       const ready = this.sharedBootstrapDone();
       const enabled = this.sharedSyncEnabled();
       const isOwnerSignedIn = this.isOwnerSignedIn();
+      const completedTasks = this.completedTasks();
       const logs = this.learningLogs();
       const categories = this.logCategoriesByDay();
       if (!ready || !enabled || !isOwnerSignedIn || this.isHydratingFromShared) return;
-      this.scheduleSharedSync(logs, categories);
+      this.scheduleSharedSync(completedTasks, logs, categories);
     });
 
     // Draw Chart
@@ -581,6 +582,9 @@ export class AppComponent implements OnDestroy {
       const remote = await this.sharedNotesService.loadState();
       if (!remote) return;
 
+      const mergedCompletedTasks = this.mergeSharedCompletedTasks(this.completedTasks(), remote.completedTasks || []);
+      this.completedTasks.set(mergedCompletedTasks);
+
       // 合併遠端 + 本地，避免「遠端讀得到但寫不進去」時覆蓋本地最新內容
       const mergedLogs = this.mergeSharedLogs(this.learningLogs(), remote.logs as LogEntry[]);
       this.learningLogs.set(mergedLogs);
@@ -598,23 +602,33 @@ export class AppComponent implements OnDestroy {
     }
   }
 
-  private scheduleSharedSync(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
+  private scheduleSharedSync(
+    completedTasks: Set<string>,
+    logs: LogEntry[],
+    categoriesByDay: Record<string, string[]>
+  ) {
     if (this.sharedSyncTimer) clearTimeout(this.sharedSyncTimer);
 
+    const completedTasksSnapshot = Array.from(completedTasks.values());
     const logsSnapshot = logs.map(l => ({ ...l }));
     const categoriesSnapshot = Object.fromEntries(
       Object.entries(categoriesByDay).map(([dayId, categories]) => [dayId, [...(categories || [])]])
     );
 
     this.sharedSyncTimer = setTimeout(() => {
-      void this.pushSharedState(logsSnapshot, categoriesSnapshot);
+      void this.pushSharedState(completedTasksSnapshot, logsSnapshot, categoriesSnapshot);
     }, 700);
   }
 
-  private async pushSharedState(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
+  private async pushSharedState(
+    completedTasks: string[],
+    logs: LogEntry[],
+    categoriesByDay: Record<string, string[]>
+  ) {
     if (!this.isOwnerSignedIn()) return;
     try {
       await this.sharedNotesService.replaceState({
+        completedTasks,
         logs: logs as SharedLogEntry[],
         categoriesByDay
       });
@@ -666,6 +680,22 @@ export class AppComponent implements OnDestroy {
       const remote = Array.isArray(remoteByDay?.[dayId]) ? remoteByDay[dayId] : [];
       const local = Array.isArray(localByDay?.[dayId]) ? localByDay[dayId] : [];
       merged[dayId] = this.normalizeCategoryList([...remote, ...local]);
+    }
+
+    return merged;
+  }
+
+  private mergeSharedCompletedTasks(localTasks: Set<string>, remoteTasks: string[]): Set<string> {
+    const merged = new Set<string>();
+
+    for (const raw of remoteTasks || []) {
+      const task = String(raw || '').trim();
+      if (task) merged.add(task);
+    }
+
+    for (const raw of localTasks || []) {
+      const task = String(raw || '').trim();
+      if (task) merged.add(task);
     }
 
     return merged;
