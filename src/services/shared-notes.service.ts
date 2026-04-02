@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { AuthChangeEvent, createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://povzwweoisrucqeaebmb.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_6I7StVgWH6QaP2NOiRJ6Xw_zYTk-ily';
@@ -41,9 +41,9 @@ export class SharedNotesService {
     return data.user?.email?.toLowerCase() || null;
   }
 
-  onAuthStateChange(callback: (email: string | null) => void): () => void {
-    const { data } = this.supabase.auth.onAuthStateChange((_event, session) => {
-      callback(session?.user?.email?.toLowerCase() || null);
+  onAuthStateChange(callback: (email: string | null, event: AuthChangeEvent) => void): () => void {
+    const { data } = this.supabase.auth.onAuthStateChange((event, session) => {
+      callback(session?.user?.email?.toLowerCase() || null, event);
     });
     return () => {
       data.subscription.unsubscribe();
@@ -61,6 +61,19 @@ export class SharedNotesService {
 
   async signOut(): Promise<void> {
     const { error } = await this.supabase.auth.signOut();
+    if (error) throw error;
+  }
+
+  async sendPasswordResetEmail(email: string, redirectTo: string): Promise<void> {
+    const { error } = await this.supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo }
+    );
+    if (error) throw error;
+  }
+
+  async updateCurrentUserPassword(password: string): Promise<void> {
+    const { error } = await this.supabase.auth.updateUser({ password });
     if (error) throw error;
   }
 
