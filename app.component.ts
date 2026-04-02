@@ -1,6 +1,7 @@
-import { Component, inject, signal, computed, effect, ElementRef, viewChild } from '@angular/core';
+import { Component, inject, signal, computed, effect, ElementRef, viewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GeminiService } from './services/gemini.service';
+import { SharedNotesService, SharedLogEntry } from './services/shared-notes.service';
 import { MarkdownModule, provideMarkdown } from 'ngx-markdown';
 import { FormsModule } from '@angular/forms';
 import * as d3 from 'd3';
@@ -33,6 +34,8 @@ interface LogEntry {
   category: string; // 新增分類（用於日後回顧篩選/分組）
 }
 
+type TaskSlot = 'am' | 'pm' | 'night';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -41,8 +44,9 @@ interface LogEntry {
   templateUrl: './app.component.html',
   styleUrls: []
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   private geminiService = inject(GeminiService);
+  private sharedNotesService = inject(SharedNotesService);
   radarChartContainer = viewChild<ElementRef>('radarChart');
   journalSection = viewChild<ElementRef>('journalSection');
 
@@ -59,21 +63,72 @@ export class AppComponent {
   completedTasks = signal<Set<string>>(new Set<string>());
   learningLogs = signal<LogEntry[]>([]);
   currentLogInput = signal<string>('');
+  currentLogTimestamp = signal<string>('');
   currentLogType = signal<'theory' | 'code' | 'bug' | 'idea'>('idea'); // 新增當前筆記類型
   // Learning Journal 顯示篩選（解決筆記全部混在一起）
   journalFilter = signal<'all' | 'theory' | 'code' | 'bug' | 'idea'>('all');
 
   // Learning Journal：分類（用於回顧時快速定位）
-  logCategories = signal<string[]>(['通用', '數學', '程式', '策略', '微結構', '面試', '專題', '復盤']);
+  logCategoriesByDay = signal<Record<string, string[]>>({});
   currentLogCategory = signal<string>('通用');
   categoryFilter = signal<string>('全部'); // 列表篩選用
   newCategoryInput = signal<string>('');
   journalSearch = signal<string>('');
+  private sharedBootstrapDone = signal<boolean>(false);
+  private sharedSyncEnabled = signal<boolean>(true);
+  private isHydratingFromShared = false;
+  private sharedSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  // TODO: 如 owner email 變更，請同步更新 supabase_schema.sql 的 owner_email 常數
+  private readonly ownerEmail = 'miles891002@gmail.com';
+  authUserEmail = signal<string>('');
+  ownerLoginEmail = signal<string>(this.ownerEmail);
+  ownerLoginPassword = signal<string>('');
+  authLoading = signal<boolean>(false);
+  authError = signal<string>('');
+  authInfo = signal<string>('');
+  recoveryMode = signal<boolean>(false);
+  recoveryNewPassword = signal<string>('');
+  recoveryConfirmPassword = signal<string>('');
+  recoveryLoading = signal<boolean>(false);
+  private authStateUnsubscribe: (() => void) | null = null;
 
-  // 可用分類：合併預設分類 + 既有筆記分類（避免舊資料漏掉）
+  isOwnerSignedIn = computed(() => {
+    const signedIn = this.authUserEmail().trim().toLowerCase();
+    return !!signedIn && signedIn === this.ownerEmail.toLowerCase();
+  });
+
+  // 訪客也可在本機體驗編輯；只有 owner 模式才會同步 Supabase
+  canEdit = computed(() => true);
+
+  managedCategories = computed(() => {
+    const dayId = this.currentDayId();
+    if (!dayId) return ['通用'];
+    const byDay = this.logCategoriesByDay()[dayId] || [];
+    const merged = byDay.length > 0 ? byDay : this.inferCategoriesFromLogs(dayId);
+    return this.normalizeCategoryList(merged);
+  });
+
+  // 可用分類（當天）：合併「當天管理分類」+「當天筆記分類」
   availableCategories = computed(() => {
-    const set = new Set<string>(this.logCategories());
-    for (const l of this.learningLogs()) set.add((l as any).category || '通用');
+    const dayId = this.currentDayId();
+    const set = new Set<string>(this.managedCategories());
+    if (dayId) {
+      for (const l of this.learningLogs()) {
+        if (l.dayId !== dayId) continue;
+        set.add(this.normalizeCategoryName((l as any).category || '通用'));
+      }
+    }
+    return this.normalizeCategoryList(Array.from(set));
+  });
+
+  todaySuggestedCategories = computed(() => {
+    const day = this.currentDaySchedule();
+    if (!day) return [] as string[];
+    const set = new Set<string>();
+    [day.am?.topic, day.pm?.topic, day.night?.topic].forEach(topic => {
+      const normalized = this.normalizeCategoryName(topic || '');
+      if (normalized) set.add(normalized);
+    });
     return Array.from(set);
   });
 
@@ -81,6 +136,7 @@ export class AppComponent {
   tutorLoading = signal<boolean>(false);
   tutorResponse = signal<string>('');
   tutorConcept = signal<string>('');
+  focusExplainDayId = signal<string>('');
   interviewQuestion = signal<string>('');
   interviewAnswer = signal<string>('');
   showAnswer = signal<boolean>(false);
@@ -199,16 +255,33 @@ export class AppComponent {
 
   constructor() {
     // Load persisted state
-    this.completedTasks.set(new Set(JSON.parse(localStorage.getItem('quant_tasks') || '[]')));
+    this.completedTasks.set(this.loadCompletedTasks());
 
-    // Load persisted categories (if any)
+    // Load persisted categories (by day)
     try {
-      const savedCats = localStorage.getItem('quant_log_categories');
-      if (savedCats) {
-        const arr = JSON.parse(savedCats);
-        if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) {
-          const uniq = Array.from(new Set(arr.map(s => s.trim()).filter(Boolean)));
-          if (uniq.length) this.logCategories.set(uniq);
+      const savedByDay = localStorage.getItem('quant_log_categories_by_day');
+      if (savedByDay) {
+        const parsed = JSON.parse(savedByDay);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const normalizedMap: Record<string, string[]> = {};
+          for (const [dayId, cats] of Object.entries(parsed as Record<string, unknown>)) {
+            if (!dayId || !Array.isArray(cats)) continue;
+            const strings = cats.filter(x => typeof x === 'string') as string[];
+            normalizedMap[dayId] = this.normalizeCategoryList(strings);
+          }
+          this.logCategoriesByDay.set(normalizedMap);
+        }
+      } else {
+        // Backward compatibility: migrate old global categories to current day
+        const savedLegacyCats = localStorage.getItem('quant_log_categories');
+        if (savedLegacyCats) {
+          const arr = JSON.parse(savedLegacyCats);
+          if (Array.isArray(arr) && arr.every(x => typeof x === 'string')) {
+            const dayId = this.currentDayId() || 'W1D1';
+            this.logCategoriesByDay.set({
+              [dayId]: this.normalizeCategoryList(arr as string[])
+            });
+          }
         }
       }
     } catch (e) {
@@ -255,7 +328,29 @@ export class AppComponent {
     });
 
     effect(() => {
-      localStorage.setItem('quant_log_categories', JSON.stringify(this.logCategories()));
+      localStorage.setItem('quant_log_categories_by_day', JSON.stringify(this.logCategoriesByDay()));
+    });
+
+    // 切換日期時，若目前選到不存在的分類，安全回退到「通用 / 全部」
+    effect(() => {
+      const managed = this.managedCategories();
+      const available = this.availableCategories();
+      const current = this.currentLogCategory();
+      const filter = this.categoryFilter();
+
+      if (!managed.includes(current)) this.currentLogCategory.set('通用');
+      if (filter !== '全部' && !available.includes(filter)) this.categoryFilter.set('全部');
+    });
+
+    // Shared notes sync（Supabase）
+    effect(() => {
+      const ready = this.sharedBootstrapDone();
+      const enabled = this.sharedSyncEnabled();
+      const isOwnerSignedIn = this.isOwnerSignedIn();
+      const logs = this.learningLogs();
+      const categories = this.logCategoriesByDay();
+      if (!ready || !enabled || !isOwnerSignedIn || this.isHydratingFromShared) return;
+      this.scheduleSharedSync(logs, categories);
     });
 
     // Draw Chart
@@ -265,6 +360,19 @@ export class AppComponent {
         setTimeout(() => this.drawRadarChart(skills), 100);
       }
     });
+
+    if (this.detectPasswordRecoveryFromUrl()) {
+      this.recoveryMode.set(true);
+      this.authInfo.set('偵測到重設密碼連結，請先設定新密碼。');
+    }
+
+    void this.initAuthState();
+    void this.hydrateFromSharedStore();
+  }
+
+  ngOnDestroy(): void {
+    if (this.authStateUnsubscribe) this.authStateUnsubscribe();
+    if (this.sharedSyncTimer) clearTimeout(this.sharedSyncTimer);
   }
 
   // --- Computed Skills ---
@@ -280,9 +388,16 @@ export class AppComponent {
     this.weeksData.forEach(week => {
       const weekTasks = this.detailedSchedule[week.id];
       if (!weekTasks) return;
-      const allTasks = weekTasks.flatMap(d => [...d.am.tasks, ...d.pm.tasks, ...d.night.tasks]);
-      if (allTasks.length === 0) return;
-      const ratio = allTasks.filter(t => completed.has(t)).length / allTasks.length;
+      const allTaskEntries = weekTasks.flatMap(d => [
+        ...d.am.tasks.map((task, index) => ({ key: this.taskKey(d.day_id, 'am', task, index), legacyTask: task })),
+        ...d.pm.tasks.map((task, index) => ({ key: this.taskKey(d.day_id, 'pm', task, index), legacyTask: task })),
+        ...d.night.tasks.map((task, index) => ({ key: this.taskKey(d.day_id, 'night', task, index), legacyTask: task }))
+      ]);
+      if (allTaskEntries.length === 0) return;
+      const doneCount = allTaskEntries.filter(({ key, legacyTask }) =>
+        this.isTaskDone(completed, key, legacyTask)
+      ).length;
+      const ratio = doneCount / allTaskEntries.length;
       Object.keys(week.skills).forEach(k => current[k] = (current[k] || 0) + (week.skills[k] * ratio));
     });
     const normalized: any = {};
@@ -292,6 +407,301 @@ export class AppComponent {
   });
 
   // --- Helpers ---
+  private loadCompletedTasks(): Set<string> {
+    try {
+      const raw = localStorage.getItem('quant_tasks');
+      if (!raw) return new Set<string>();
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new Set<string>();
+      return new Set(parsed.filter(x => typeof x === 'string' && x.trim().length > 0));
+    } catch (e) {
+      console.warn('Failed to parse completed tasks', e);
+      return new Set<string>();
+    }
+  }
+
+  private async initAuthState() {
+    try {
+      const email = await this.sharedNotesService.getCurrentUserEmail();
+      this.authUserEmail.set((email || '').toLowerCase());
+    } catch (e) {
+      console.warn('Failed to load auth session state.', e);
+    }
+
+    this.authStateUnsubscribe = this.sharedNotesService.onAuthStateChange((email, event) => {
+      const nextEmail = (email || '').toLowerCase();
+      const prevEmail = this.authUserEmail();
+
+      if (event === 'PASSWORD_RECOVERY') {
+        this.recoveryMode.set(true);
+        this.authError.set('');
+        this.authInfo.set('已驗證重設密碼連結，請輸入新密碼。');
+      }
+
+      if (nextEmail === prevEmail && event !== 'PASSWORD_RECOVERY') return;
+
+      this.authUserEmail.set(nextEmail);
+      if (event !== 'PASSWORD_RECOVERY') this.authError.set('');
+
+      if (nextEmail && nextEmail === this.ownerEmail.toLowerCase()) {
+        this.sharedSyncEnabled.set(true);
+        void this.hydrateFromSharedStore();
+      }
+    });
+  }
+
+  async signInOwner() {
+    const email = this.ownerLoginEmail().trim().toLowerCase();
+    const password = this.ownerLoginPassword();
+    if (!email || !password) return;
+
+    this.authLoading.set(true);
+    this.authError.set('');
+    this.authInfo.set('');
+    try {
+      const signedInEmail = await this.sharedNotesService.signInWithPassword(email, password);
+      this.authUserEmail.set((signedInEmail || '').toLowerCase());
+      this.ownerLoginPassword.set('');
+
+      if (!this.isOwnerSignedIn()) {
+        this.authError.set('已登入但不是 owner 帳號，將維持訪客本機模式。');
+        return;
+      }
+
+      this.sharedSyncEnabled.set(true);
+      await this.hydrateFromSharedStore();
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.authLoading.set(false);
+    }
+  }
+
+  async signOutOwner() {
+    this.authLoading.set(true);
+    this.authError.set('');
+    this.authInfo.set('');
+    try {
+      await this.sharedNotesService.signOut();
+      this.authUserEmail.set('');
+      this.ownerLoginPassword.set('');
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.authLoading.set(false);
+    }
+  }
+
+  async sendOwnerPasswordResetEmail() {
+    const email = this.ownerLoginEmail().trim().toLowerCase();
+    if (!email) {
+      this.authError.set('請先輸入 owner email。');
+      return;
+    }
+
+    this.authLoading.set(true);
+    this.authError.set('');
+    this.authInfo.set('');
+    try {
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+      await this.sharedNotesService.sendPasswordResetEmail(email, redirectTo);
+      this.authInfo.set('已寄出重設密碼信。請點擊信件連結回到本站後，輸入新密碼。');
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.authLoading.set(false);
+    }
+  }
+
+  async completePasswordRecovery() {
+    const nextPassword = this.recoveryNewPassword();
+    const confirmPassword = this.recoveryConfirmPassword();
+
+    if (!nextPassword || nextPassword.length < 6) {
+      this.authError.set('新密碼至少需要 6 個字元。');
+      return;
+    }
+    if (nextPassword !== confirmPassword) {
+      this.authError.set('兩次輸入的密碼不一致。');
+      return;
+    }
+
+    this.recoveryLoading.set(true);
+    this.authError.set('');
+    this.authInfo.set('');
+    try {
+      await this.sharedNotesService.updateCurrentUserPassword(nextPassword);
+      this.recoveryMode.set(false);
+      this.recoveryNewPassword.set('');
+      this.recoveryConfirmPassword.set('');
+      this.clearRecoveryParamsFromUrl();
+      this.authInfo.set('密碼已更新，現在可以用新密碼登入 Owner。');
+    } catch (e) {
+      this.authError.set(this.toFriendlyAuthError(e));
+    } finally {
+      this.recoveryLoading.set(false);
+    }
+  }
+
+  private detectPasswordRecoveryFromUrl(): boolean {
+    if (typeof window === 'undefined') return false;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const query = new URLSearchParams(window.location.search);
+    const type = (hash.get('type') || query.get('type') || '').toLowerCase();
+    return type === 'recovery';
+  }
+
+  private clearRecoveryParamsFromUrl() {
+    if (typeof window === 'undefined') return;
+    const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
+
+  private toFriendlyAuthError(error: unknown): string {
+    const message = String((error as any)?.message || '登入失敗');
+    const lowered = message.toLowerCase();
+
+    if (lowered.includes('failed to fetch') || lowered.includes('networkerror') || lowered.includes('load failed')) {
+      return '無法連線到 Supabase（Failed to fetch）。請檢查：1) Project URL 是否正確 2) 專案是否 Active 3) 瀏覽器是否有擋廣告/隱私外掛阻擋請求。';
+    }
+
+    if (lowered.includes('invalid token') || lowered.includes('expired')) {
+      return '重設密碼連結已失效，請重新寄送重設密碼信。';
+    }
+
+    if (message.toLowerCase().includes('invalid login credentials')) {
+      return '帳號或密碼錯誤，請重新確認。';
+    }
+    return message;
+  }
+
+  private async hydrateFromSharedStore() {
+    try {
+      this.isHydratingFromShared = true;
+      const remote = await this.sharedNotesService.loadState();
+      if (!remote) return;
+
+      // 合併遠端 + 本地，避免「遠端讀得到但寫不進去」時覆蓋本地最新內容
+      const mergedLogs = this.mergeSharedLogs(this.learningLogs(), remote.logs as LogEntry[]);
+      this.learningLogs.set(mergedLogs);
+
+      const mergedCategories = this.mergeSharedCategories(this.logCategoriesByDay(), remote.categoriesByDay);
+      this.logCategoriesByDay.set(mergedCategories);
+    } catch (e) {
+      console.warn('Supabase shared sync unavailable; fallback to local-only mode.', e);
+      if (this.shouldDisableSharedSync(e)) {
+        this.sharedSyncEnabled.set(false);
+      }
+    } finally {
+      this.isHydratingFromShared = false;
+      this.sharedBootstrapDone.set(true);
+    }
+  }
+
+  private scheduleSharedSync(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
+    if (this.sharedSyncTimer) clearTimeout(this.sharedSyncTimer);
+
+    const logsSnapshot = logs.map(l => ({ ...l }));
+    const categoriesSnapshot = Object.fromEntries(
+      Object.entries(categoriesByDay).map(([dayId, categories]) => [dayId, [...(categories || [])]])
+    );
+
+    this.sharedSyncTimer = setTimeout(() => {
+      void this.pushSharedState(logsSnapshot, categoriesSnapshot);
+    }, 700);
+  }
+
+  private async pushSharedState(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
+    if (!this.isOwnerSignedIn()) return;
+    try {
+      await this.sharedNotesService.replaceState({
+        logs: logs as SharedLogEntry[],
+        categoriesByDay
+      });
+    } catch (e) {
+      console.warn('Failed to sync shared notes to Supabase.', e);
+      if (this.shouldDisableSharedSync(e)) {
+        this.sharedSyncEnabled.set(false);
+      }
+    }
+  }
+
+  private mergeSharedLogs(localLogs: LogEntry[], remoteLogs: LogEntry[]): LogEntry[] {
+    const merged = new Map<string, LogEntry>();
+    const ingest = (items: LogEntry[]) => {
+      for (const item of items || []) {
+        const normalized: LogEntry = {
+          id: (item?.id || '').trim() || this.uuid(),
+          dayId: String(item?.dayId || '').trim(),
+          timestamp: Number.isFinite(Number(item?.timestamp)) ? Number(item?.timestamp) : Date.now(),
+          content: String(item?.content || ''),
+          type: (item?.type === 'theory' || item?.type === 'code' || item?.type === 'bug' || item?.type === 'idea') ? item.type : 'idea',
+          category: this.normalizeCategoryName(item?.category || '通用')
+        };
+        const prev = merged.get(normalized.id);
+        if (!prev || normalized.timestamp >= prev.timestamp) {
+          merged.set(normalized.id, normalized);
+        }
+      }
+    };
+
+    // 先放遠端再放本地：同 id 時本地較新（或同時戳）可覆蓋
+    ingest(remoteLogs || []);
+    ingest(localLogs || []);
+    return Array.from(merged.values()).sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  private mergeSharedCategories(
+    localByDay: Record<string, string[]>,
+    remoteByDay: Record<string, string[]>
+  ): Record<string, string[]> {
+    const merged: Record<string, string[]> = {};
+    const dayIds = new Set<string>([
+      ...Object.keys(remoteByDay || {}),
+      ...Object.keys(localByDay || {})
+    ]);
+
+    for (const dayId of dayIds) {
+      if (!dayId) continue;
+      const remote = Array.isArray(remoteByDay?.[dayId]) ? remoteByDay[dayId] : [];
+      const local = Array.isArray(localByDay?.[dayId]) ? localByDay[dayId] : [];
+      merged[dayId] = this.normalizeCategoryList([...remote, ...local]);
+    }
+
+    return merged;
+  }
+
+  private shouldDisableSharedSync(error: unknown): boolean {
+    return this.isMissingSharedTableError(error) || this.isSharedPermissionError(error);
+  }
+
+  private isMissingSharedTableError(error: unknown): boolean {
+    const code = String((error as any)?.code || '');
+    const message = String((error as any)?.message || '');
+    return code === 'PGRST205' || message.includes('schema cache');
+  }
+
+  private isSharedPermissionError(error: unknown): boolean {
+    const code = String((error as any)?.code || '');
+    const status = Number((error as any)?.status || 0);
+    const message = String((error as any)?.message || '').toLowerCase();
+    return (
+      code === '42501' ||
+      status === 401 ||
+      status === 403 ||
+      message.includes('row-level security') ||
+      message.includes('permission denied')
+    );
+  }
+
+  private isTaskDone(completed: Set<string>, key: string, legacyTask?: string): boolean {
+    return completed.has(key) || (!!legacyTask && completed.has(legacyTask));
+  }
+
+  taskKey(dayId: string, slot: TaskSlot, task: string, taskIndex: number): string {
+    return `${dayId}::${slot}::${taskIndex}::${task}`;
+  }
+
   currentWeekData = computed(() => this.weeksData.find(w => w.id === this.selectedWeekId()));
   currentPhaseData = computed(() => this.phases.find(p => p.id === this.currentWeekData()?.phaseId));
   currentWeekSchedule = computed(() => this.detailedSchedule[this.selectedWeekId()] || []);
@@ -370,27 +780,49 @@ groupedDayLogs = computed(() => {
     this.selectedWeekId.set(id);
     const first = (this.detailedSchedule[id] || [])[0]?.day_id || '';
     this.selectedDayId.set(first);
+    this.focusExplainDayId.set('');
     this.closeSidebar();
     this.resetAI();
   }
   selectDay(dayId: string) {
     this.selectedDayId.set(dayId);
+    if (this.focusExplainDayId() !== dayId) {
+      this.focusExplainDayId.set('');
+    }
   }
-  setTab(tab: 'roadmap' | 'interview' | 'project') { this.activeTab.set(tab); }
+  setTab(tab: 'roadmap' | 'interview' | 'project') {
+    this.activeTab.set(tab);
+    this.closeSidebar();
+  }
   resetAI() { this.tutorResponse.set(''); this.tutorConcept.set(''); }
+
+  async askQuantFocus(day: DailyTask) {
+    this.focusExplainDayId.set(day.day_id);
+    const prompt = `${day.title}\n${day.yushi_focus}`;
+    await this.askAiTutor(prompt);
+  }
 
   // Sidebar（筆電 / 小螢幕抽屜）
   toggleSidebar() { this.sidebarOpen.update(v => !v); }
   closeSidebar() { this.sidebarOpen.set(false); }
 
-  toggleTask(task: string) {
+  toggleTask(taskKey: string, legacyTask?: string) {
+    if (!this.canEdit()) return;
     this.completedTasks.update(set => {
       const newSet = new Set(set);
-      newSet.has(task) ? newSet.delete(task) : newSet.add(task);
+      const done = this.isTaskDone(newSet, taskKey, legacyTask);
+      if (done) {
+        newSet.delete(taskKey);
+        if (legacyTask) newSet.delete(legacyTask);
+      } else {
+        newSet.add(taskKey);
+      }
       return newSet;
     });
   }
-  isTaskCompleted(task: string) { return this.completedTasks().has(task); }
+  isTaskCompleted(taskKey: string, legacyTask?: string) {
+    return this.isTaskDone(this.completedTasks(), taskKey, legacyTask);
+  }
 
   // 新增：切換筆記類型
   setLogType(type: 'theory' | 'code' | 'bug' | 'idea') {
@@ -409,14 +841,96 @@ groupedDayLogs = computed(() => {
 
   // Learning Journal：新增分類（可用於自訂模組/主題）
   addCategory() {
+    if (!this.canEdit()) return;
     const raw = this.newCategoryInput().trim();
     if (!raw) return;
-    const exists = new Set(this.availableCategories());
-    if (!exists.has(raw)) {
-      this.logCategories.update(arr => [...arr, raw]);
-    }
-    this.currentLogCategory.set(raw);
+    const normalized = this.normalizeCategoryName(raw);
+    if (!normalized) return;
+    this.addCategoryByName(normalized);
+    this.currentLogCategory.set(normalized);
     this.newCategoryInput.set('');
+  }
+
+  removeCategory(category: string) {
+    if (!this.canEdit()) return;
+    const dayId = this.currentDayId();
+    const normalized = this.normalizeCategoryName(category);
+    if (!dayId || !normalized || normalized === '通用') return;
+
+    this.updateDayCategories(dayId, arr =>
+      arr.filter(c => this.normalizeCategoryName(c) !== normalized)
+    );
+
+    // 只處理當天筆記，避免影響其他日期
+    this.learningLogs.update(logs => logs.map(l => {
+      if (l.dayId !== dayId) return l;
+      const c = this.normalizeCategoryName((l as any).category || '通用');
+      if (c !== normalized) return l;
+      return { ...l, category: '通用' };
+    }));
+
+    if (this.currentLogCategory() === normalized) {
+      this.currentLogCategory.set('通用');
+    }
+    if (this.categoryFilter() === normalized) {
+      this.categoryFilter.set('全部');
+    }
+  }
+
+  addTodayTopicsAsCategories() {
+    if (!this.canEdit()) return;
+    const topics = this.todaySuggestedCategories();
+    if (!topics.length) return;
+    topics.forEach(topic => this.addCategoryByName(topic));
+    if (topics[0]) this.currentLogCategory.set(topics[0]);
+  }
+
+  private addCategoryByName(category: string) {
+    const dayId = this.currentDayId();
+    const normalized = this.normalizeCategoryName(category);
+    if (!dayId || !normalized) return;
+
+    this.updateDayCategories(dayId, arr => {
+      const map = new Map<string, string>();
+      arr.forEach(c => {
+        const key = this.normalizeCategoryName(c);
+        if (key) map.set(key, key);
+      });
+      map.set(normalized, normalized);
+      return Array.from(map.values());
+    });
+  }
+
+  private currentDayId(): string {
+    return this.currentDaySchedule()?.day_id || this.selectedDayId() || '';
+  }
+
+  private normalizeCategoryList(raw: string[]): string[] {
+    const uniq = Array.from(
+      new Set((raw || []).map(c => this.normalizeCategoryName(c)).filter(Boolean))
+    );
+    if (!uniq.includes('通用')) uniq.unshift('通用');
+    return uniq;
+  }
+
+  private inferCategoriesFromLogs(dayId: string): string[] {
+    const fromLogs = this.learningLogs()
+      .filter(l => l.dayId === dayId)
+      .map(l => this.normalizeCategoryName((l as any).category || '通用'));
+    return this.normalizeCategoryList(fromLogs);
+  }
+
+  private updateDayCategories(dayId: string, updater: (arr: string[]) => string[]) {
+    const fallback = this.inferCategoriesFromLogs(dayId);
+    this.logCategoriesByDay.update(prev => {
+      const base = prev[dayId]?.length ? prev[dayId] : fallback;
+      const next = this.normalizeCategoryList(updater(this.normalizeCategoryList(base)));
+      return { ...prev, [dayId]: next };
+    });
+  }
+
+  private normalizeCategoryName(raw: string): string {
+    return raw.replace(/\s+/g, ' ').trim();
   }
 
   // Learning Journal：一鍵清除篩選
@@ -424,6 +938,27 @@ groupedDayLogs = computed(() => {
     this.journalFilter.set('all');
     this.categoryFilter.set('全部');
     this.journalSearch.set('');
+  }
+
+  exportNotesBackup() {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      learningLogs: this.learningLogs(),
+      logCategoriesByDay: this.logCategoriesByDay(),
+      completedTasks: Array.from(this.completedTasks())
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `quant-notes-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
 // 安全的 UUID（避免部分環境沒有 crypto.randomUUID）
@@ -444,44 +979,60 @@ private uuid(): string {
     });
   }
 
+  private resolveLogTimestamp(): number {
+    const raw = this.currentLogTimestamp().trim();
+    if (!raw) return Date.now();
+    const parsed = new Date(raw).getTime();
+    return Number.isFinite(parsed) ? parsed : Date.now();
+  }
+
   // 修改：儲存時加入 type
   addLog() {
+    if (!this.canEdit()) return;
     const content = this.currentLogInput().trim();
     if (!content) return;
     this.learningLogs.update(logs => [{ 
       id: this.uuid(), 
       dayId: this.currentDaySchedule()?.day_id || '', 
-      timestamp: Date.now(), 
+      timestamp: this.resolveLogTimestamp(),
       content,
       type: this.currentLogType(), // 儲存當前類型
       category: this.currentLogCategory() || '通用'
     }, ...logs]);
     this.currentLogInput.set('');
+    this.currentLogTimestamp.set('');
   }
-  deleteLog(id: string) { this.learningLogs.update(logs => logs.filter(l => l.id !== id)); }
+  deleteLog(id: string) {
+    if (!this.canEdit()) return;
+    this.learningLogs.update(logs => logs.filter(l => l.id !== id));
+  }
 
   // 新增：生成每日總結
   async generateDailySummary() {
+    if (!this.canEdit()) return;
     const logs = this.currentDayLogs().map(l => ({ type: l.type || 'idea', content: l.content }));
     const title = this.currentDaySchedule()?.title || 'Quant Study';
     
     this.tutorLoading.set(true);
     this.tutorConcept.set('每日學習總結');
     this.tutorResponse.set(''); // 清空舊內容
-    
-    const summary = await this.geminiService.summarizeDailyLogs(logs, title);
-    this.tutorResponse.set(summary);
-    this.tutorLoading.set(false);
-    
-    // 自動將總結也存成一條特殊的筆記
-    this.learningLogs.update(prev => [{
-      id: this.uuid(),
-      dayId: this.currentDaySchedule()?.day_id || '',
-      timestamp: Date.now(),
-      content: `## 🤖 AI Daily Recap\n${summary}`,
-      type: 'idea',
-      category: '總結'
-    }, ...prev]);
+
+    try {
+      const summary = await this.geminiService.summarizeDailyLogs(logs, title);
+      this.tutorResponse.set(summary);
+
+      // 自動將總結也存成一條特殊的筆記
+      this.learningLogs.update(prev => [{
+        id: this.uuid(),
+        dayId: this.currentDaySchedule()?.day_id || '',
+        timestamp: Date.now(),
+        content: `## 🤖 AI Daily Recap\n${summary}`,
+        type: 'idea',
+        category: '總結'
+      }, ...prev]);
+    } finally {
+      this.tutorLoading.set(false);
+    }
   }
 
   // --- D3 ---
@@ -586,16 +1137,27 @@ private uuid(): string {
 
   // --- AI Wrappers ---
   async askAiTutor(concept: string) {
-    this.tutorLoading.set(true); this.tutorConcept.set(concept); this.tutorResponse.set('');
-    this.tutorResponse.set(await this.geminiService.explainConcept(concept, this.currentWeekData()?.summary || ''));
-    this.tutorLoading.set(false);
+    this.tutorLoading.set(true);
+    this.tutorConcept.set(concept);
+    this.tutorResponse.set('');
+    try {
+      this.tutorResponse.set(await this.geminiService.explainConcept(concept, this.currentWeekData()?.summary || ''));
+    } finally {
+      this.tutorLoading.set(false);
+    }
   }
 
   async generateQuestion() {
-    this.interviewLoading.set(true); this.showAnswer.set(false); this.interviewQuestion.set('');
-    const res = await this.geminiService.generateInterviewQuestion();
-    this.interviewQuestion.set(res.question); this.interviewAnswer.set(res.answer);
-    this.interviewLoading.set(false);
+    this.interviewLoading.set(true);
+    this.showAnswer.set(false);
+    this.interviewQuestion.set('');
+    try {
+      const res = await this.geminiService.generateInterviewQuestion();
+      this.interviewQuestion.set(res.question);
+      this.interviewAnswer.set(res.answer);
+    } finally {
+      this.interviewLoading.set(false);
+    }
   }
   toggleAnswer() { this.showAnswer.update(v => !v); }
 }
