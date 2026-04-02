@@ -350,14 +350,14 @@ markdown img {
                   <div class="px-4 py-3 border-b border-slate-800 bg-slate-950/70">
                     <div class="flex flex-wrap items-center gap-2 justify-between">
                       <div class="text-[11px] text-slate-400">
-                        @if (canEdit()) {
-                          <span class="text-emerald-300">Owner 已登入，可編輯與同步</span>
+                        @if (isOwnerSignedIn()) {
+                          <span class="text-emerald-300">Owner 模式：可編輯並同步到你的雲端紀錄</span>
                         } @else {
-                          <span class="text-amber-300">唯讀模式：請用 owner 帳號登入</span>
+                          <span class="text-cyan-300">訪客模式：可本機體驗，資料只存在此瀏覽器</span>
                         }
-                        <span class="text-slate-500 ml-2">{{ authUserEmail() || '未登入' }}</span>
+                        <span class="text-slate-500 ml-2">{{ authUserEmail() || '訪客（未登入）' }}</span>
                       </div>
-                      @if (canEdit()) {
+                      @if (isOwnerSignedIn()) {
                         <button
                           (click)="signOutOwner()"
                           [disabled]="authLoading()"
@@ -368,7 +368,7 @@ markdown img {
                       }
                     </div>
 
-                    @if (!canEdit()) {
+                    @if (!isOwnerSignedIn()) {
                       <div class="mt-2 flex flex-wrap items-center gap-2">
                         <input
                           type="email"

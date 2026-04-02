@@ -87,10 +87,13 @@ export class AppComponent implements OnDestroy {
   authError = signal<string>('');
   private authStateUnsubscribe: (() => void) | null = null;
 
-  canEdit = computed(() => {
+  isOwnerSignedIn = computed(() => {
     const signedIn = this.authUserEmail().trim().toLowerCase();
     return !!signedIn && signedIn === this.ownerEmail.toLowerCase();
   });
+
+  // 訪客也可在本機體驗編輯；只有 owner 模式才會同步 Supabase
+  canEdit = computed(() => true);
 
   managedCategories = computed(() => {
     const dayId = this.currentDayId();
@@ -338,10 +341,10 @@ export class AppComponent implements OnDestroy {
     effect(() => {
       const ready = this.sharedBootstrapDone();
       const enabled = this.sharedSyncEnabled();
-      const canEdit = this.canEdit();
+      const isOwnerSignedIn = this.isOwnerSignedIn();
       const logs = this.learningLogs();
       const categories = this.logCategoriesByDay();
-      if (!ready || !enabled || !canEdit || this.isHydratingFromShared) return;
+      if (!ready || !enabled || !isOwnerSignedIn || this.isHydratingFromShared) return;
       this.scheduleSharedSync(logs, categories);
     });
 
@@ -442,8 +445,8 @@ export class AppComponent implements OnDestroy {
       this.authUserEmail.set((signedInEmail || '').toLowerCase());
       this.ownerLoginPassword.set('');
 
-      if (this.authUserEmail() !== this.ownerEmail.toLowerCase()) {
-        this.authError.set('已登入但不是 owner 帳號，目前為唯讀模式。');
+      if (!this.isOwnerSignedIn()) {
+        this.authError.set('已登入但不是 owner 帳號，將維持訪客本機模式。');
         return;
       }
 
@@ -515,7 +518,7 @@ export class AppComponent implements OnDestroy {
   }
 
   private async pushSharedState(logs: LogEntry[], categoriesByDay: Record<string, string[]>) {
-    if (!this.canEdit()) return;
+    if (!this.isOwnerSignedIn()) return;
     try {
       await this.sharedNotesService.replaceState({
         logs: logs as SharedLogEntry[],
